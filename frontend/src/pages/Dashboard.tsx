@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { generateStoryboard } from "../api/filmApi";
 import Hero from "../components/Hero";
 import MediaPipeline from "../components/MediaPipeline";
 import ProjectForm from "../components/ProjectForm";
@@ -6,37 +7,31 @@ import SceneCard from "../components/SceneCard";
 import Timeline from "../components/Timeline";
 import type { Scene } from "../types/film";
 
-const demoScenes: Scene[] = [
-  {
-    id: 1,
-    title: "The lonely robot",
-    mood: "Melancholic, cinematic",
-    duration: "8 sec",
-    narration: "In a neon city, a small robot wanders alone through the rain.",
-  },
-  {
-    id: 2,
-    title: "The signal",
-    mood: "Mysterious, hopeful",
-    duration: "10 sec",
-    narration: "A strange light appears in the sky, guiding the robot forward.",
-  },
-  {
-    id: 3,
-    title: "A new friend",
-    mood: "Warm, emotional",
-    duration: "12 sec",
-    narration: "The robot discovers another machine waiting beneath the tower.",
-  },
-];
-
 function Dashboard() {
   const [movieTitle, setMovieTitle] = useState("");
   const [movieIdea, setMovieIdea] = useState("");
   const [scenes, setScenes] = useState<Scene[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  function handleGenerateStoryboard() {
-    setScenes(demoScenes);
+  async function handleGenerateStoryboard() {
+    try {
+      setIsLoading(true);
+
+      const generatedScenes = await generateStoryboard({
+        title: movieTitle,
+        idea: movieIdea,
+        genre: "Sci-Fi",
+        style: "Cinematic",
+        scene_count: 3,
+      });
+
+      setScenes(generatedScenes);
+    } catch (error) {
+      console.error("Failed to generate storyboard:", error);
+      alert("Could not generate storyboard. Make sure the backend is running.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -50,6 +45,15 @@ function Dashboard() {
         onMovieIdeaChange={setMovieIdea}
         onGenerateStoryboard={handleGenerateStoryboard}
       />
+
+      {isLoading && (
+        <div className="card card-dark p-4 mb-5 text-center">
+          <h2 className="h4 fw-bold mb-2">Generating storyboard...</h2>
+          <p className="muted-text">
+            AI Film Studio is creating your first scene structure.
+          </p>
+        </div>
+      )}
 
       {scenes.length > 0 && (
         <>
