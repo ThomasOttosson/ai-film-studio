@@ -4,6 +4,8 @@ export interface Scene {
   narration: string;
   mood: string;
   duration: string;
+  imageUrl?: string;
+  imagePrompt?: string;
 }
 
 export interface FilmProject {

@@ -13,10 +13,29 @@ export interface StoryboardRequest {
   scene_count: number;
 }
 
+export interface ImageRequest {
+  scene_title: string;
+  narration: string;
+  mood: string;
+  style: string;
+}
+
+export interface ImageResponse {
+  image_url: string;
+  prompt: string;
+}
+
 export async function generateStoryboard(
   data: StoryboardRequest
 ): Promise<Scene[]> {
   const response = await api.post<Scene[]>("/api/storyboard", data);
+  return response.data;
+}
+
+export async function generateSceneImage(
+  data: ImageRequest
+): Promise<ImageResponse> {
+  const response = await api.post<ImageResponse>("/api/generate-image", data);
   return response.data;
 }
 

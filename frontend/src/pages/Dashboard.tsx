@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { generateStoryboard } from "../api/filmApi";
+import { generateSceneImage, generateStoryboard } from "../api/filmApi";
 import Hero from "../components/Hero";
 import MediaPipeline from "../components/MediaPipeline";
 import ProjectForm from "../components/ProjectForm";
@@ -12,6 +12,9 @@ function Dashboard() {
   const [movieIdea, setMovieIdea] = useState("");
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [generatingImageSceneId, setGeneratingImageSceneId] = useState<
+    number | null
+  >(null);
 
   async function handleGenerateStoryboard() {
     try {
@@ -31,6 +34,36 @@ function Dashboard() {
       alert("Could not generate storyboard. Make sure the backend is running.");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleGenerateImage(scene: Scene) {
+    try {
+      setGeneratingImageSceneId(scene.id);
+
+      const result = await generateSceneImage({
+        scene_title: scene.title,
+        narration: scene.narration,
+        mood: scene.mood,
+        style: "cinematic",
+      });
+
+      setScenes((currentScenes) =>
+        currentScenes.map((currentScene) =>
+          currentScene.id === scene.id
+            ? {
+                ...currentScene,
+                imageUrl: result.image_url,
+                imagePrompt: result.prompt,
+              }
+            : currentScene
+        )
+      );
+    } catch (error) {
+      console.error("Failed to generate image:", error);
+      alert("Could not generate image. Check your backend terminal.");
+    } finally {
+      setGeneratingImageSceneId(null);
     }
   }
 
@@ -62,7 +95,12 @@ function Dashboard() {
 
             <div className="row g-4">
               {scenes.map((scene) => (
-                <SceneCard key={scene.id} scene={scene} />
+                <SceneCard
+                  key={scene.id}
+                  scene={scene}
+                  onGenerateImage={handleGenerateImage}
+                  isGeneratingImage={generatingImageSceneId === scene.id}
+                />
               ))}
             </div>
           </section>

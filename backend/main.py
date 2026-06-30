@@ -1,6 +1,7 @@
 import json
 import os
 from typing import List
+import base64
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -112,4 +113,59 @@ Example:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate storyboard: {str(error)}",
+        )
+
+class ImageRequest(BaseModel):
+    scene_title: str
+    narration: str
+    mood: str
+    style: str = "cinematic"
+
+
+class ImageResponse(BaseModel):
+    image_url: str
+    prompt: str
+
+
+@app.post("/api/generate-image", response_model=ImageResponse)
+def generate_scene_image(request: ImageRequest):
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=500, detail="Missing OPENAI_API_KEY")
+
+    image_prompt = f"""
+Create a cinematic film still.
+
+Scene title: {request.scene_title}
+Scene narration: {request.narration}
+Mood: {request.mood}
+Visual style: {request.style}
+
+Make it look like a high-quality movie frame.
+No text, no subtitles, no watermark.
+"""
+
+    try:
+        response = client.images.generate(
+            model="gpt-image-1",
+            prompt=image_prompt,
+            size="1024x1024",
+            quality="medium",
+        )
+
+        image_base64 = response.data[0].b64_json
+
+        if not image_base64:
+            raise HTTPException(status_code=500, detail="No image returned")
+
+        image_url = f"data:image/png;base64,{image_base64}"
+
+        return {
+            "image_url": image_url,
+            "prompt": image_prompt,
+        }
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate image: {str(error)}",
         )
