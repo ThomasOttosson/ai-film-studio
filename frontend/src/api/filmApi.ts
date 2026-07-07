@@ -75,4 +75,25 @@ export async function generateSceneImage(
   return response.data;
 }
 
+export interface FullMovieRequest {
+  title: string;
+  video_urls: string[];
+}
+
+export interface FullMovieResponse {
+  final_movie_url: string;
+  title: string;
+}
+
+export async function generateFullMovie(
+  data: FullMovieRequest
+): Promise<FullMovieResponse> {
+  const response = await api.post<FullMovieResponse>(
+    "/api/generate-full-movie",
+    data
+  );
+
+  return response.data;
+}
+
 export default api;

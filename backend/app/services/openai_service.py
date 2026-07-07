@@ -7,9 +7,9 @@ from typing import List
 from fastapi import HTTPException
 from openai import OpenAI
 
+from app.schemas.images import AudioRequest, AudioResponse, ImageRequest, ImageResponse
 from app.schemas.storyboard import Scene, StoryboardRequest
 from app.services.backblaze_service import upload_audio_to_b2, upload_image_to_b2
-from app.schemas.images import AudioRequest, AudioResponse, ImageRequest, ImageResponse
 
 client = OpenAI()
 
@@ -30,6 +30,13 @@ Genre: {request.genre}
 Style: {request.style}
 Number of scenes: {request.scene_count}
 
+Important timing rules:
+- Each scene is exactly 5 seconds long.
+- Narration must fit naturally inside 5 seconds.
+- Each narration must be maximum 12 words.
+- Use short, visual, cinematic narration.
+- Do not write long paragraphs.
+
 Return ONLY valid JSON.
 Return an object with this exact structure:
 
@@ -38,9 +45,9 @@ Return an object with this exact structure:
     {{
       "id": 1,
       "title": "Scene title",
-      "narration": "Scene narration",
+      "narration": "Short narration under 12 words.",
       "mood": "Scene mood",
-      "duration": "8 sec"
+      "duration": "5s"
     }}
   ]
 }}
@@ -52,7 +59,7 @@ Return an object with this exact structure:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert film director and storyboard writer. Always return valid JSON.",
+                    "content": "You are an expert film director. Create short 5-second cinematic scenes and always return valid JSON.",
                 },
                 {
                     "role": "user",
