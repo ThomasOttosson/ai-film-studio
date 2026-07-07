@@ -6,6 +6,8 @@ export interface Scene {
   duration: string;
   imageUrl?: string;
   imagePrompt?: string;
+  audioUrl?: string;
+  audioPrompt?: string;
 }
 
 export interface FilmProject {

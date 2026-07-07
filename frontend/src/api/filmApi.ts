@@ -25,6 +25,24 @@ export interface ImageResponse {
   prompt: string;
 }
 
+export interface AudioRequest {
+  scene_title: string;
+  narration: string;
+  voice: string;
+}
+
+export interface AudioResponse {
+  audio_url: string;
+  prompt: string;
+}
+
+export async function generateSceneAudio(
+  data: AudioRequest
+): Promise<AudioResponse> {
+  const response = await api.post<AudioResponse>("/api/generate-audio", data);
+  return response.data;
+}
+
 export async function generateStoryboard(
   data: StoryboardRequest
 ): Promise<Scene[]> {

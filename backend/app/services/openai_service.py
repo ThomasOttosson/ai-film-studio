@@ -147,7 +147,7 @@ def generate_audio_with_ai(request: AudioRequest) -> AudioResponse:
             model="gpt-4o-mini-tts",
             voice=request.voice,
             input=request.narration,
-            format="mp3",
+            response_format="mp3",
         )
 
         audio_bytes = response.read()

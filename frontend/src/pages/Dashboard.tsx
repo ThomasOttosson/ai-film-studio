@@ -1,6 +1,11 @@
 import { useState } from "react";
-import { generateSceneImage, generateStoryboard } from "../api/filmApi";
+import {
+  generateSceneAudio,
+  generateSceneImage,
+  generateStoryboard,
+} from "../api/filmApi";
 import Hero from "../components/Hero";
+import MediaLibrary from "../components/MediaLibrary";
 import MediaPipeline from "../components/MediaPipeline";
 import ProjectForm from "../components/ProjectForm";
 import SceneCard from "../components/SceneCard";
@@ -13,6 +18,9 @@ function Dashboard() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [generatingImageSceneId, setGeneratingImageSceneId] = useState<
+    number | null
+  >(null);
+  const [generatingAudioSceneId, setGeneratingAudioSceneId] = useState<
     number | null
   >(null);
 
@@ -67,6 +75,35 @@ function Dashboard() {
     }
   }
 
+  async function handleGenerateAudio(scene: Scene) {
+    try {
+      setGeneratingAudioSceneId(scene.id);
+
+      const result = await generateSceneAudio({
+        scene_title: scene.title,
+        narration: scene.narration,
+        voice: "alloy",
+      });
+
+      setScenes((currentScenes) =>
+        currentScenes.map((currentScene) =>
+          currentScene.id === scene.id
+            ? {
+                ...currentScene,
+                audioUrl: result.audio_url,
+                audioPrompt: result.prompt,
+              }
+            : currentScene
+        )
+      );
+    } catch (error) {
+      console.error("Failed to generate audio:", error);
+      alert("Could not generate audio. Check your backend terminal.");
+    } finally {
+      setGeneratingAudioSceneId(null);
+    }
+  }
+
   return (
     <main className="container py-5">
       <Hero />
@@ -99,7 +136,9 @@ function Dashboard() {
                   key={scene.id}
                   scene={scene}
                   onGenerateImage={handleGenerateImage}
+                  onGenerateAudio={handleGenerateAudio}
                   isGeneratingImage={generatingImageSceneId === scene.id}
+                  isGeneratingAudio={generatingAudioSceneId === scene.id}
                 />
               ))}
             </div>
@@ -108,6 +147,8 @@ function Dashboard() {
           <Timeline scenes={scenes} />
 
           <MediaPipeline />
+
+          <MediaLibrary scenes={scenes} />
         </>
       )}
     </main>
