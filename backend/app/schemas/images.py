@@ -29,6 +29,8 @@ class VideoRequest(BaseModel):
     scene_title: str
     image_url: str
     audio_url: str
+    scene_length: int = 5
+    aspect_ratio: str = "16:9"
 
 
 class VideoResponse(BaseModel):

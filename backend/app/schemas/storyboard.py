@@ -7,6 +7,7 @@ class StoryboardRequest(BaseModel):
     genre: str = "Sci-Fi"
     style: str = "Cinematic"
     scene_count: int = 3
+    scene_length: int = 5
 
 
 class Scene(BaseModel):

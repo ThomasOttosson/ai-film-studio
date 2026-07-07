@@ -11,6 +11,7 @@ import Hero from "../components/Hero";
 import MediaLibrary from "../components/MediaLibrary";
 import MediaPipeline from "../components/MediaPipeline";
 import ProjectForm from "../components/ProjectForm";
+import ProjectSettings from "../components/ProjectSettings";
 import SceneCard from "../components/SceneCard";
 import Timeline from "../components/Timeline";
 import type { Scene } from "../types/film";
@@ -20,6 +21,10 @@ function Dashboard() {
   const [movieIdea, setMovieIdea] = useState("");
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [style, setStyle] = useState("Cinematic");
+  const [sceneLength, setSceneLength] = useState(5);
+  const [aspectRatio, setAspectRatio] = useState("16:9");
 
   const [generatingImageSceneId, setGeneratingImageSceneId] =
     useState<number | null>(null);
@@ -39,8 +44,9 @@ function Dashboard() {
         title: movieTitle,
         idea: movieIdea,
         genre: "Sci-Fi",
-        style: "Cinematic",
+        style,
         scene_count: 3,
+        scene_length: sceneLength,
       });
 
       setScenes(generatedScenes);
@@ -61,7 +67,7 @@ function Dashboard() {
         scene_title: scene.title,
         narration: scene.narration,
         mood: scene.mood,
-        style: "cinematic",
+        style,
       });
 
       setScenes((currentScenes) =>
@@ -113,23 +119,29 @@ function Dashboard() {
   }
 
   async function handleGenerateVideo(scene: Scene) {
-    if (!scene.imageUrl || !scene.audioUrl) {
+    const latestScene = scenes.find(
+      (currentScene) => currentScene.id === scene.id
+    );
+
+    if (!latestScene?.imageUrl || !latestScene?.audioUrl) {
       alert("Generate both image and audio before creating a video.");
       return;
     }
 
     try {
-      setGeneratingVideoSceneId(scene.id);
+      setGeneratingVideoSceneId(latestScene.id);
 
       const result = await generateSceneVideo({
-        scene_title: scene.title,
-        image_url: scene.imageUrl,
-        audio_url: scene.audioUrl,
+        scene_title: latestScene.title,
+        image_url: latestScene.imageUrl,
+        audio_url: latestScene.audioUrl,
+        scene_length: sceneLength,
+        aspect_ratio: aspectRatio,
       });
 
       setScenes((currentScenes) =>
         currentScenes.map((currentScene) =>
-          currentScene.id === scene.id
+          currentScene.id === latestScene.id
             ? {
                 ...currentScene,
                 videoUrl: result.video_url,
@@ -149,10 +161,7 @@ function Dashboard() {
   function handleMoveSceneUp(sceneId: number) {
     setScenes((currentScenes) => {
       const index = currentScenes.findIndex((scene) => scene.id === sceneId);
-
-      if (index <= 0) {
-        return currentScenes;
-      }
+      if (index <= 0) return currentScenes;
 
       const updatedScenes = [...currentScenes];
       [updatedScenes[index - 1], updatedScenes[index]] = [
@@ -167,7 +176,6 @@ function Dashboard() {
   function handleMoveSceneDown(sceneId: number) {
     setScenes((currentScenes) => {
       const index = currentScenes.findIndex((scene) => scene.id === sceneId);
-
       if (index === -1 || index === currentScenes.length - 1) {
         return currentScenes;
       }
@@ -218,6 +226,15 @@ function Dashboard() {
   return (
     <main className="container py-5">
       <Hero />
+
+      <ProjectSettings
+        style={style}
+        sceneLength={sceneLength}
+        aspectRatio={aspectRatio}
+        onStyleChange={setStyle}
+        onSceneLengthChange={setSceneLength}
+        onAspectRatioChange={setAspectRatio}
+      />
 
       <ProjectForm
         movieTitle={movieTitle}

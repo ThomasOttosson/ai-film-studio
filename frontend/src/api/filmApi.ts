@@ -11,6 +11,7 @@ export interface StoryboardRequest {
   genre: string;
   style: string;
   scene_count: number;
+  scene_length: number;
 }
 
 export interface ImageRequest {
@@ -40,6 +41,8 @@ export interface VideoRequest {
   scene_title: string;
   image_url: string;
   audio_url: string;
+  scene_length: number;
+  aspect_ratio: string;
 }
 
 export interface VideoResponse {

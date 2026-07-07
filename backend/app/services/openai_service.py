@@ -21,6 +21,8 @@ def generate_storyboard_with_ai(request: StoryboardRequest) -> List[Scene]:
             detail="Missing OPENAI_API_KEY. Check backend/.env",
         )
 
+    max_words = 12 if request.scene_length <= 5 else 24
+
     prompt = f"""
 Create a cinematic storyboard for an AI-generated short film.
 
@@ -31,9 +33,9 @@ Style: {request.style}
 Number of scenes: {request.scene_count}
 
 Important timing rules:
-- Each scene is exactly 5 seconds long.
-- Narration must fit naturally inside 5 seconds.
-- Each narration must be maximum 12 words.
+- Each scene is exactly {request.scene_length} seconds long.
+- Narration must fit naturally inside {request.scene_length} seconds.
+- Narration must be maximum {max_words} words per scene.
 - Use short, visual, cinematic narration.
 - Do not write long paragraphs.
 
@@ -45,9 +47,9 @@ Return an object with this exact structure:
     {{
       "id": 1,
       "title": "Scene title",
-      "narration": "Short narration under 12 words.",
+      "narration": "Short cinematic narration.",
       "mood": "Scene mood",
-      "duration": "5s"
+      "duration": "{request.scene_length}s"
     }}
   ]
 }}
@@ -59,7 +61,7 @@ Return an object with this exact structure:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert film director. Create short 5-second cinematic scenes and always return valid JSON.",
+                    "content": f"You are an expert film director. Create short {request.scene_length}-second cinematic scenes and always return valid JSON.",
                 },
                 {
                     "role": "user",
