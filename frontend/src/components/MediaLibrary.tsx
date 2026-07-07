@@ -7,6 +7,7 @@ interface MediaLibraryProps {
 function MediaLibrary({ scenes }: MediaLibraryProps) {
   const imageAssets = scenes.filter((scene) => scene.imageUrl);
   const audioAssets = scenes.filter((scene) => scene.audioUrl);
+  const videoAssets = scenes.filter((scene) => scene.videoUrl);
 
   return (
     <section className="card card-dark p-4 mt-5">
@@ -22,7 +23,11 @@ function MediaLibrary({ scenes }: MediaLibraryProps) {
         <div className="row g-3 mb-4">
           {imageAssets.map((scene) => (
             <div className="col-md-4" key={`image-${scene.id}`}>
-              <img src={scene.imageUrl} alt={scene.title} className="scene-generated-image mb-2" />
+              <img
+                src={scene.imageUrl}
+                alt={scene.title}
+                className="scene-generated-image mb-2"
+              />
               <p className="small mb-1">{scene.title}</p>
               <a href={scene.imageUrl} target="_blank" rel="noreferrer" className="small">
                 Open B2 image
@@ -36,7 +41,7 @@ function MediaLibrary({ scenes }: MediaLibraryProps) {
       {audioAssets.length === 0 ? (
         <p className="muted-text">No voice-overs generated yet.</p>
       ) : (
-        <div className="d-grid gap-3">
+        <div className="d-grid gap-3 mb-4">
           {audioAssets.map((scene) => (
             <div className="p-3 rounded bg-dark border" key={`audio-${scene.id}`}>
               <p className="small mb-2">{scene.title}</p>
@@ -44,6 +49,25 @@ function MediaLibrary({ scenes }: MediaLibraryProps) {
               <a href={scene.audioUrl} target="_blank" rel="noreferrer" className="small">
                 Open B2 audio
               </a>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h3 className="h5 fw-bold mb-3">Videos</h3>
+      {videoAssets.length === 0 ? (
+        <p className="muted-text">No videos generated yet.</p>
+      ) : (
+        <div className="row g-3">
+          {videoAssets.map((scene) => (
+            <div className="col-md-6" key={`video-${scene.id}`}>
+              <div className="p-3 rounded bg-dark border">
+                <p className="small mb-2">{scene.title}</p>
+                <video className="w-100 rounded" controls src={scene.videoUrl} />
+                <a href={scene.videoUrl} target="_blank" rel="noreferrer" className="small">
+                  Open B2 video
+                </a>
+              </div>
             </div>
           ))}
         </div>
