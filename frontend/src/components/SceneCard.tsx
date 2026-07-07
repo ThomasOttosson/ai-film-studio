@@ -61,7 +61,11 @@ function SceneCard({
             onClick={() => onGenerateImage(scene)}
             disabled={isGeneratingImage}
           >
-            {isGeneratingImage ? "Generating image..." : "Generate Image"}
+            {isGeneratingImage
+              ? "Generating image..."
+              : scene.imageUrl
+                ? "Regenerate Image"
+                : "Generate Image"}
           </button>
 
           <button
@@ -69,7 +73,11 @@ function SceneCard({
             onClick={() => onGenerateAudio(scene)}
             disabled={isGeneratingAudio}
           >
-            {isGeneratingAudio ? "Generating audio..." : "Generate Audio"}
+            {isGeneratingAudio
+              ? "Generating audio..."
+              : scene.audioUrl
+                ? "Regenerate Audio"
+                : "Generate Audio"}
           </button>
 
           <button
@@ -77,7 +85,11 @@ function SceneCard({
             onClick={() => onGenerateVideo(scene)}
             disabled={isGeneratingVideo || !scene.imageUrl || !scene.audioUrl}
           >
-            {isGeneratingVideo ? "Generating video..." : "Generate Video"}
+            {isGeneratingVideo
+              ? "Generating video..."
+              : scene.videoUrl
+                ? "Regenerate Video"
+                : "Generate Video"}
           </button>
         </div>
       </div>
