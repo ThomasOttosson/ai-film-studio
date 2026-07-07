@@ -116,6 +116,13 @@ body {
   font-weight: 600;
 }
 
+.timeline-editor-item {
+  background: rgba(17, 24, 39, 0.85);
+  border: 1px solid #334155;
+  border-radius: 14px;
+  padding: 16px;
+}
+
 /* ---------- Image Placeholder ---------- */
 
 .scene-image-placeholder {

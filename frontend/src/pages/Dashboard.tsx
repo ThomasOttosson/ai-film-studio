@@ -21,9 +21,12 @@ function Dashboard() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [generatingImageSceneId, setGeneratingImageSceneId] = useState<number | null>(null);
-  const [generatingAudioSceneId, setGeneratingAudioSceneId] = useState<number | null>(null);
-  const [generatingVideoSceneId, setGeneratingVideoSceneId] = useState<number | null>(null);
+  const [generatingImageSceneId, setGeneratingImageSceneId] =
+    useState<number | null>(null);
+  const [generatingAudioSceneId, setGeneratingAudioSceneId] =
+    useState<number | null>(null);
+  const [generatingVideoSceneId, setGeneratingVideoSceneId] =
+    useState<number | null>(null);
 
   const [isGeneratingFullMovie, setIsGeneratingFullMovie] = useState(false);
   const [finalMovieUrl, setFinalMovieUrl] = useState("");
@@ -64,7 +67,11 @@ function Dashboard() {
       setScenes((currentScenes) =>
         currentScenes.map((currentScene) =>
           currentScene.id === scene.id
-            ? { ...currentScene, imageUrl: result.image_url, imagePrompt: result.prompt }
+            ? {
+                ...currentScene,
+                imageUrl: result.image_url,
+                imagePrompt: result.prompt,
+              }
             : currentScene
         )
       );
@@ -89,7 +96,11 @@ function Dashboard() {
       setScenes((currentScenes) =>
         currentScenes.map((currentScene) =>
           currentScene.id === scene.id
-            ? { ...currentScene, audioUrl: result.audio_url, audioPrompt: result.prompt }
+            ? {
+                ...currentScene,
+                audioUrl: result.audio_url,
+                audioPrompt: result.prompt,
+              }
             : currentScene
         )
       );
@@ -119,7 +130,11 @@ function Dashboard() {
       setScenes((currentScenes) =>
         currentScenes.map((currentScene) =>
           currentScene.id === scene.id
-            ? { ...currentScene, videoUrl: result.video_url, videoPrompt: result.prompt }
+            ? {
+                ...currentScene,
+                videoUrl: result.video_url,
+                videoPrompt: result.prompt,
+              }
             : currentScene
         )
       );
@@ -129,6 +144,48 @@ function Dashboard() {
     } finally {
       setGeneratingVideoSceneId(null);
     }
+  }
+
+  function handleMoveSceneUp(sceneId: number) {
+    setScenes((currentScenes) => {
+      const index = currentScenes.findIndex((scene) => scene.id === sceneId);
+
+      if (index <= 0) {
+        return currentScenes;
+      }
+
+      const updatedScenes = [...currentScenes];
+      [updatedScenes[index - 1], updatedScenes[index]] = [
+        updatedScenes[index],
+        updatedScenes[index - 1],
+      ];
+
+      return updatedScenes;
+    });
+  }
+
+  function handleMoveSceneDown(sceneId: number) {
+    setScenes((currentScenes) => {
+      const index = currentScenes.findIndex((scene) => scene.id === sceneId);
+
+      if (index === -1 || index === currentScenes.length - 1) {
+        return currentScenes;
+      }
+
+      const updatedScenes = [...currentScenes];
+      [updatedScenes[index], updatedScenes[index + 1]] = [
+        updatedScenes[index + 1],
+        updatedScenes[index],
+      ];
+
+      return updatedScenes;
+    });
+  }
+
+  function handleRemoveScene(sceneId: number) {
+    setScenes((currentScenes) =>
+      currentScenes.filter((scene) => scene.id !== sceneId)
+    );
   }
 
   async function handleGenerateFullMovie() {
@@ -200,7 +257,13 @@ function Dashboard() {
             </div>
           </section>
 
-          <Timeline scenes={scenes} />
+          <Timeline
+            scenes={scenes}
+            onMoveSceneUp={handleMoveSceneUp}
+            onMoveSceneDown={handleMoveSceneDown}
+            onRemoveScene={handleRemoveScene}
+          />
+
           <MediaPipeline />
           <MediaLibrary scenes={scenes} />
 
