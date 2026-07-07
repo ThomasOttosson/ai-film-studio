@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import List
 
 
 class ImageRequest(BaseModel):
@@ -33,3 +34,13 @@ class VideoRequest(BaseModel):
 class VideoResponse(BaseModel):
     video_url: str
     prompt: str
+
+
+class FullMovieRequest(BaseModel):
+    title: str
+    video_urls: List[str]
+
+
+class FullMovieResponse(BaseModel):
+    final_movie_url: str
+    title: str

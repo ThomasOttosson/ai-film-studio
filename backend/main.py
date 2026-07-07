@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
-from app.routes import audio, images, storyboard, video
+from app.routes import audio, images, movie, storyboard, video
 
 app = FastAPI(title="AI Film Studio API")
 
@@ -20,6 +20,7 @@ app.include_router(storyboard.router)
 app.include_router(images.router)
 app.include_router(audio.router)
 app.include_router(video.router)
+app.include_router(movie.router)
 
 @app.get("/")
 def root():
