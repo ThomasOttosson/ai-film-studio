@@ -7,9 +7,9 @@ from typing import List
 from fastapi import HTTPException
 from openai import OpenAI
 
-from app.schemas.images import ImageRequest, ImageResponse
 from app.schemas.storyboard import Scene, StoryboardRequest
-from app.services.backblaze_service import upload_image_to_b2
+from app.services.backblaze_service import upload_audio_to_b2, upload_image_to_b2
+from app.schemas.images import AudioRequest, AudioResponse, ImageRequest, ImageResponse
 
 client = OpenAI()
 
@@ -132,4 +132,39 @@ No text, no subtitles, no watermark.
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate image: {repr(error)}",
+        )
+
+
+def generate_audio_with_ai(request: AudioRequest) -> AudioResponse:
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(
+            status_code=500,
+            detail="Missing OPENAI_API_KEY. Check backend/.env",
+        )
+
+    try:
+        response = client.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            voice=request.voice,
+            input=request.narration,
+            format="mp3",
+        )
+
+        audio_bytes = response.read()
+        filename = f"{uuid.uuid4()}.mp3"
+        audio_url = upload_audio_to_b2(audio_bytes, filename)
+
+        return AudioResponse(
+            audio_url=audio_url,
+            prompt=request.narration,
+        )
+
+    except Exception as error:
+        import traceback
+
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate audio: {repr(error)}",
         )
