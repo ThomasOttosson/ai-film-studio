@@ -22,3 +22,14 @@ class AudioRequest(BaseModel):
 class AudioResponse(BaseModel):
     audio_url: str
     prompt: str
+
+
+class VideoRequest(BaseModel):
+    scene_title: str
+    image_url: str
+    audio_url: str
+
+
+class VideoResponse(BaseModel):
+    video_url: str
+    prompt: str

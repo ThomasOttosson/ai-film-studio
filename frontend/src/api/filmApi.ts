@@ -36,6 +36,24 @@ export interface AudioResponse {
   prompt: string;
 }
 
+export interface VideoRequest {
+  scene_title: string;
+  image_url: string;
+  audio_url: string;
+}
+
+export interface VideoResponse {
+  video_url: string;
+  prompt: string;
+}
+
+export async function generateSceneVideo(
+  data: VideoRequest
+): Promise<VideoResponse> {
+  const response = await api.post<VideoResponse>("/api/generate-video", data);
+  return response.data;
+}
+
 export async function generateSceneAudio(
   data: AudioRequest
 ): Promise<AudioResponse> {

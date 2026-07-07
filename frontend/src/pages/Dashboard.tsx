@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   generateSceneAudio,
   generateSceneImage,
+  generateSceneVideo,
   generateStoryboard,
 } from "../api/filmApi";
 import Hero from "../components/Hero";
@@ -17,10 +18,16 @@ function Dashboard() {
   const [movieIdea, setMovieIdea] = useState("");
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
   const [generatingImageSceneId, setGeneratingImageSceneId] = useState<
     number | null
   >(null);
+
   const [generatingAudioSceneId, setGeneratingAudioSceneId] = useState<
+    number | null
+  >(null);
+
+  const [generatingVideoSceneId, setGeneratingVideoSceneId] = useState<
     number | null
   >(null);
 
@@ -104,6 +111,40 @@ function Dashboard() {
     }
   }
 
+  async function handleGenerateVideo(scene: Scene) {
+    if (!scene.imageUrl || !scene.audioUrl) {
+      alert("Generate both image and audio before creating a video.");
+      return;
+    }
+
+    try {
+      setGeneratingVideoSceneId(scene.id);
+
+      const result = await generateSceneVideo({
+        scene_title: scene.title,
+        image_url: scene.imageUrl,
+        audio_url: scene.audioUrl,
+      });
+
+      setScenes((currentScenes) =>
+        currentScenes.map((currentScene) =>
+          currentScene.id === scene.id
+            ? {
+                ...currentScene,
+                videoUrl: result.video_url,
+                videoPrompt: result.prompt,
+              }
+            : currentScene
+        )
+      );
+    } catch (error) {
+      console.error("Failed to generate video:", error);
+      alert("Could not generate video. Check your backend terminal.");
+    } finally {
+      setGeneratingVideoSceneId(null);
+    }
+  }
+
   return (
     <main className="container py-5">
       <Hero />
@@ -137,8 +178,10 @@ function Dashboard() {
                   scene={scene}
                   onGenerateImage={handleGenerateImage}
                   onGenerateAudio={handleGenerateAudio}
+                  onGenerateVideo={handleGenerateVideo}
                   isGeneratingImage={generatingImageSceneId === scene.id}
                   isGeneratingAudio={generatingAudioSceneId === scene.id}
+                  isGeneratingVideo={generatingVideoSceneId === scene.id}
                 />
               ))}
             </div>

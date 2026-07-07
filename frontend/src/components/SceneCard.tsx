@@ -5,22 +5,30 @@ interface SceneCardProps {
   scene: Scene;
   onGenerateImage: (scene: Scene) => void;
   onGenerateAudio: (scene: Scene) => void;
+  onGenerateVideo: (scene: Scene) => void;
   isGeneratingImage: boolean;
   isGeneratingAudio: boolean;
+  isGeneratingVideo: boolean;
 }
 
 function SceneCard({
   scene,
   onGenerateImage,
   onGenerateAudio,
+  onGenerateVideo,
   isGeneratingImage,
   isGeneratingAudio,
+  isGeneratingVideo,
 }: SceneCardProps) {
   return (
     <div className="col-md-4">
       <div className="card card-dark h-100 p-3">
         {scene.imageUrl ? (
-          <img src={scene.imageUrl} alt={scene.title} className="scene-generated-image mb-3" />
+          <img
+            src={scene.imageUrl}
+            alt={scene.title}
+            className="scene-generated-image mb-3"
+          />
         ) : (
           <div className="scene-image-placeholder mb-3">
             <FiImage size={42} />
@@ -31,12 +39,20 @@ function SceneCard({
         <p className="muted-text small mb-2">{scene.mood}</p>
         <p>{scene.narration}</p>
 
-        <span className="badge text-bg-dark border mt-3">{scene.duration}</span>
+        <span className="badge text-bg-dark border mt-3">
+          {scene.duration}
+        </span>
 
         {scene.audioUrl && (
           <audio className="w-100 mt-3" controls src={scene.audioUrl}>
             Your browser does not support the audio element.
           </audio>
+        )}
+
+        {scene.videoUrl && (
+          <video className="w-100 mt-3 rounded" controls src={scene.videoUrl}>
+            Your browser does not support the video element.
+          </video>
         )}
 
         <div className="d-grid gap-2 mt-3">
@@ -54,6 +70,14 @@ function SceneCard({
             disabled={isGeneratingAudio}
           >
             {isGeneratingAudio ? "Generating audio..." : "Generate Audio"}
+          </button>
+
+          <button
+            className="btn btn-outline-light btn-sm"
+            onClick={() => onGenerateVideo(scene)}
+            disabled={isGeneratingVideo || !scene.imageUrl || !scene.audioUrl}
+          >
+            {isGeneratingVideo ? "Generating video..." : "Generate Video"}
           </button>
         </div>
       </div>
