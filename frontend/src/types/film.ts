@@ -3,12 +3,14 @@ export interface Scene {
   title: string;
   narration: string;
   mood: string;
-  duration: string;
+  duration?: string;
+
   imageUrl?: string;
-  imagePrompt?: string;
   audioUrl?: string;
-  audioPrompt?: string;
   videoUrl?: string;
+
+  imagePrompt?: string;
+  audioPrompt?: string;
   videoPrompt?: string;
 }
 

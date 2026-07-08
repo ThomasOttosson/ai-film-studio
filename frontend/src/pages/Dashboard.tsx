@@ -13,8 +13,18 @@ import MediaPipeline from "../components/MediaPipeline";
 import ProjectForm from "../components/ProjectForm";
 import ProjectSettings from "../components/ProjectSettings";
 import SceneCard from "../components/SceneCard";
-import Timeline from "../components/Timeline";
+import VideoEditor from "../components/VideoEditor";
 import type { Scene } from "../types/film";
+
+function getSceneSeconds(scene: Scene, fallbackSceneLength: number) {
+  const parsedSeconds = Number(String(scene.duration).replace(/[^0-9.]/g, ""));
+
+  if (Number.isFinite(parsedSeconds) && parsedSeconds > 0) {
+    return parsedSeconds;
+  }
+
+  return fallbackSceneLength;
+}
 
 function Dashboard() {
   const [movieTitle, setMovieTitle] = useState("");
@@ -49,7 +59,13 @@ function Dashboard() {
         scene_length: sceneLength,
       });
 
-      setScenes(generatedScenes);
+      setScenes(
+        generatedScenes.map((scene) => ({
+          ...scene,
+          duration: scene.duration ?? `${sceneLength}s`,
+        }))
+      );
+
       setFinalMovieUrl("");
     } catch (error) {
       console.error("Failed to generate storyboard:", error);
@@ -135,7 +151,7 @@ function Dashboard() {
         scene_title: latestScene.title,
         image_url: latestScene.imageUrl,
         audio_url: latestScene.audioUrl,
-        scene_length: sceneLength,
+        scene_length: getSceneSeconds(latestScene, sceneLength),
         aspect_ratio: aspectRatio,
       });
 
@@ -156,44 +172,6 @@ function Dashboard() {
     } finally {
       setGeneratingVideoSceneId(null);
     }
-  }
-
-  function handleMoveSceneUp(sceneId: number) {
-    setScenes((currentScenes) => {
-      const index = currentScenes.findIndex((scene) => scene.id === sceneId);
-      if (index <= 0) return currentScenes;
-
-      const updatedScenes = [...currentScenes];
-      [updatedScenes[index - 1], updatedScenes[index]] = [
-        updatedScenes[index],
-        updatedScenes[index - 1],
-      ];
-
-      return updatedScenes;
-    });
-  }
-
-  function handleMoveSceneDown(sceneId: number) {
-    setScenes((currentScenes) => {
-      const index = currentScenes.findIndex((scene) => scene.id === sceneId);
-      if (index === -1 || index === currentScenes.length - 1) {
-        return currentScenes;
-      }
-
-      const updatedScenes = [...currentScenes];
-      [updatedScenes[index], updatedScenes[index + 1]] = [
-        updatedScenes[index + 1],
-        updatedScenes[index],
-      ];
-
-      return updatedScenes;
-    });
-  }
-
-  function handleRemoveScene(sceneId: number) {
-    setScenes((currentScenes) =>
-      currentScenes.filter((scene) => scene.id !== sceneId)
-    );
   }
 
   async function handleGenerateFullMovie() {
@@ -274,14 +252,10 @@ function Dashboard() {
             </div>
           </section>
 
-          <Timeline
-            scenes={scenes}
-            onMoveSceneUp={handleMoveSceneUp}
-            onMoveSceneDown={handleMoveSceneDown}
-            onRemoveScene={handleRemoveScene}
-          />
+          <VideoEditor scenes={scenes} setScenes={setScenes} />
 
           <MediaPipeline />
+
           <MediaLibrary scenes={scenes} />
 
           <section className="card card-dark p-4 mt-5">
