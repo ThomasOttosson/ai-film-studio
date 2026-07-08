@@ -8,6 +8,9 @@ import {
 } from "../api/filmApi";
 import AppMenuBar from "../components/AppMenuBar";
 import FinalMovie from "../components/FinalMovie";
+import GenerationQueue, {
+  type QueueStep,
+} from "../components/GenerationQueue";
 import Hero from "../components/Hero";
 import MediaLibrary from "../components/MediaLibrary";
 import MediaPipeline from "../components/MediaPipeline";
@@ -68,6 +71,9 @@ function Dashboard() {
   const [generatingVideoSceneId, setGeneratingVideoSceneId] =
     useState<number | null>(null);
 
+  const [queueSteps, setQueueSteps] = useState<QueueStep[]>([]);
+  const [isRunningQueue, setIsRunningQueue] = useState(false);
+
   const [isGeneratingFullMovie, setIsGeneratingFullMovie] = useState(false);
   const [finalMovieUrl, setFinalMovieUrl] = useState(
     initialProject.data.finalMovieUrl
@@ -99,6 +105,8 @@ function Dashboard() {
     setGeneratingAudioSceneId(null);
     setGeneratingVideoSceneId(null);
     setIsGeneratingFullMovie(false);
+    setIsRunningQueue(false);
+    setQueueSteps([]);
   }
 
   useEffect(() => {
@@ -120,6 +128,67 @@ function Dashboard() {
     aspectRatio,
     finalMovieUrl,
   ]);
+
+  function buildQueueSteps(currentScenes: Scene[]): QueueStep[] {
+    return currentScenes.flatMap((scene) => {
+      const steps: QueueStep[] = [];
+
+      if (!scene.imageUrl) {
+        steps.push({
+          id: `${scene.id}-image`,
+          sceneId: scene.id,
+          sceneTitle: scene.title,
+          type: "image",
+          status: "waiting",
+        });
+      }
+
+      if (!scene.audioUrl) {
+        steps.push({
+          id: `${scene.id}-audio`,
+          sceneId: scene.id,
+          sceneTitle: scene.title,
+          type: "audio",
+          status: "waiting",
+        });
+      }
+
+      if (!scene.videoUrl) {
+        steps.push({
+          id: `${scene.id}-video`,
+          sceneId: scene.id,
+          sceneTitle: scene.title,
+          type: "video",
+          status: "waiting",
+        });
+      }
+
+      return steps;
+    });
+  }
+
+  function updateQueueStep(
+    stepId: string,
+    status: QueueStep["status"],
+    error?: string
+  ) {
+    setQueueSteps((currentSteps) =>
+      currentSteps.map((step) =>
+        step.id === stepId
+          ? {
+              ...step,
+              status,
+              error,
+            }
+          : step
+      )
+    );
+  }
+
+  function handleClearQueue() {
+    if (isRunningQueue) return;
+    setQueueSteps([]);
+  }
 
   function handleCreateProject() {
     const project = createAndSaveProject("Untitled Project");
@@ -182,6 +251,8 @@ function Dashboard() {
     setSceneLength(defaultProjectData.sceneLength);
     setAspectRatio(defaultProjectData.aspectRatio);
     setFinalMovieUrl(defaultProjectData.finalMovieUrl);
+    setQueueSteps([]);
+    setIsRunningQueue(false);
   }
 
   async function handleGenerateStoryboard() {
@@ -204,6 +275,7 @@ function Dashboard() {
         }))
       );
 
+      setQueueSteps([]);
       setFinalMovieUrl("");
     } catch (error) {
       console.error("Failed to generate storyboard:", error);
@@ -312,6 +384,137 @@ function Dashboard() {
     }
   }
 
+  async function handleGenerateAllMedia() {
+    if (scenes.length === 0 || isRunningQueue) return;
+
+    const initialSteps = buildQueueSteps(scenes);
+
+    if (initialSteps.length === 0) {
+      alert("All scenes already have image, audio and video.");
+      return;
+    }
+
+    setQueueSteps(initialSteps);
+    setIsRunningQueue(true);
+
+    let workingScenes = [...scenes];
+
+    try {
+      for (const step of initialSteps) {
+        updateQueueStep(step.id, "running");
+
+        const latestScene = workingScenes.find(
+          (scene) => scene.id === step.sceneId
+        );
+
+        if (!latestScene) {
+          updateQueueStep(step.id, "failed", "Scene was not found.");
+          continue;
+        }
+
+        try {
+          if (step.type === "image") {
+            setGeneratingImageSceneId(latestScene.id);
+
+            const result = await generateSceneImage({
+              scene_title: latestScene.title,
+              narration: latestScene.narration,
+              mood: latestScene.mood,
+              style,
+            });
+
+            workingScenes = workingScenes.map((scene) =>
+              scene.id === latestScene.id
+                ? {
+                    ...scene,
+                    imageUrl: result.image_url,
+                    imagePrompt: result.prompt,
+                  }
+                : scene
+            );
+
+            setScenes(workingScenes);
+            updateQueueStep(step.id, "done");
+          }
+
+          if (step.type === "audio") {
+            setGeneratingAudioSceneId(latestScene.id);
+
+            const result = await generateSceneAudio({
+              scene_title: latestScene.title,
+              narration: latestScene.narration,
+              voice: "alloy",
+            });
+
+            workingScenes = workingScenes.map((scene) =>
+              scene.id === latestScene.id
+                ? {
+                    ...scene,
+                    audioUrl: result.audio_url,
+                    audioPrompt: result.prompt,
+                  }
+                : scene
+            );
+
+            setScenes(workingScenes);
+            updateQueueStep(step.id, "done");
+          }
+
+          if (step.type === "video") {
+            const sceneWithMedia = workingScenes.find(
+              (scene) => scene.id === latestScene.id
+            );
+
+            if (!sceneWithMedia?.imageUrl || !sceneWithMedia?.audioUrl) {
+              updateQueueStep(
+                step.id,
+                "failed",
+                "Image and audio are required before video."
+              );
+              continue;
+            }
+
+            setGeneratingVideoSceneId(sceneWithMedia.id);
+
+            const result = await generateSceneVideo({
+              scene_title: sceneWithMedia.title,
+              image_url: sceneWithMedia.imageUrl,
+              audio_url: sceneWithMedia.audioUrl,
+              scene_length: getSceneSeconds(sceneWithMedia, sceneLength),
+              aspect_ratio: aspectRatio,
+            });
+
+            workingScenes = workingScenes.map((scene) =>
+              scene.id === sceneWithMedia.id
+                ? {
+                    ...scene,
+                    videoUrl: result.video_url,
+                    videoPrompt: result.prompt,
+                  }
+                : scene
+            );
+
+            setScenes(workingScenes);
+            updateQueueStep(step.id, "done");
+          }
+        } catch (error) {
+          console.error("Queue step failed:", error);
+          updateQueueStep(
+            step.id,
+            "failed",
+            error instanceof Error ? error.message : "Generation failed."
+          );
+        } finally {
+          setGeneratingImageSceneId(null);
+          setGeneratingAudioSceneId(null);
+          setGeneratingVideoSceneId(null);
+        }
+      }
+    } finally {
+      setIsRunningQueue(false);
+    }
+  }
+
   async function handleGenerateFullMovie() {
     const videoUrls = scenes
       .map((scene) => scene.videoUrl)
@@ -394,6 +597,14 @@ function Dashboard() {
 
         {scenes.length > 0 && (
           <>
+            <GenerationQueue
+              scenes={scenes}
+              isRunning={isRunningQueue}
+              queueSteps={queueSteps}
+              onGenerateAll={handleGenerateAllMedia}
+              onClearQueue={handleClearQueue}
+            />
+
             <section className="mb-5">
               <h2 className="h3 fw-bold mb-4">Storyboard</h2>
 
