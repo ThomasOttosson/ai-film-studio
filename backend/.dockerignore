@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+venv
+.venv
+.env.local
+.cache
+.pytest_cache
+generated-images
+generated-audio
+generated-videos
+final-movies
