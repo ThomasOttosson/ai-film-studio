@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   generateFullMovie,
   generateSceneAudio,
@@ -16,6 +16,54 @@ import SceneCard from "../components/SceneCard";
 import VideoEditor from "../components/VideoEditor";
 import type { Scene } from "../types/film";
 
+const STORAGE_KEY = "ai-film-studio-project";
+
+interface SavedProject {
+  movieTitle: string;
+  movieIdea: string;
+  scenes: Scene[];
+  style: string;
+  sceneLength: number;
+  aspectRatio: string;
+  finalMovieUrl: string;
+}
+
+const defaultProject: SavedProject = {
+  movieTitle: "",
+  movieIdea: "",
+  scenes: [],
+  style: "Cinematic",
+  sceneLength: 5,
+  aspectRatio: "16:9",
+  finalMovieUrl: "",
+};
+
+function loadSavedProject(): SavedProject {
+  try {
+    const savedProject = localStorage.getItem(STORAGE_KEY);
+
+    if (!savedProject) {
+      return defaultProject;
+    }
+
+    const parsedProject = JSON.parse(savedProject) as Partial<SavedProject>;
+
+    return {
+      movieTitle: parsedProject.movieTitle ?? "",
+      movieIdea: parsedProject.movieIdea ?? "",
+      scenes: parsedProject.scenes ?? [],
+      style: parsedProject.style ?? "Cinematic",
+      sceneLength: parsedProject.sceneLength ?? 5,
+      aspectRatio: parsedProject.aspectRatio ?? "16:9",
+      finalMovieUrl: parsedProject.finalMovieUrl ?? "",
+    };
+  } catch (error) {
+    console.error("Failed to load saved project:", error);
+    localStorage.removeItem(STORAGE_KEY);
+    return defaultProject;
+  }
+}
+
 function getSceneSeconds(scene: Scene, fallbackSceneLength: number) {
   const parsedSeconds = Number(String(scene.duration).replace(/[^0-9.]/g, ""));
 
@@ -27,14 +75,16 @@ function getSceneSeconds(scene: Scene, fallbackSceneLength: number) {
 }
 
 function Dashboard() {
-  const [movieTitle, setMovieTitle] = useState("");
-  const [movieIdea, setMovieIdea] = useState("");
-  const [scenes, setScenes] = useState<Scene[]>([]);
+  const savedProject = useMemo(() => loadSavedProject(), []);
+
+  const [movieTitle, setMovieTitle] = useState(savedProject.movieTitle);
+  const [movieIdea, setMovieIdea] = useState(savedProject.movieIdea);
+  const [scenes, setScenes] = useState<Scene[]>(savedProject.scenes);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [style, setStyle] = useState("Cinematic");
-  const [sceneLength, setSceneLength] = useState(5);
-  const [aspectRatio, setAspectRatio] = useState("16:9");
+  const [style, setStyle] = useState(savedProject.style);
+  const [sceneLength, setSceneLength] = useState(savedProject.sceneLength);
+  const [aspectRatio, setAspectRatio] = useState(savedProject.aspectRatio);
 
   const [generatingImageSceneId, setGeneratingImageSceneId] =
     useState<number | null>(null);
@@ -44,7 +94,46 @@ function Dashboard() {
     useState<number | null>(null);
 
   const [isGeneratingFullMovie, setIsGeneratingFullMovie] = useState(false);
-  const [finalMovieUrl, setFinalMovieUrl] = useState("");
+  const [finalMovieUrl, setFinalMovieUrl] = useState(savedProject.finalMovieUrl);
+
+  useEffect(() => {
+    const projectToSave: SavedProject = {
+      movieTitle,
+      movieIdea,
+      scenes,
+      style,
+      sceneLength,
+      aspectRatio,
+      finalMovieUrl,
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projectToSave));
+  }, [
+    movieTitle,
+    movieIdea,
+    scenes,
+    style,
+    sceneLength,
+    aspectRatio,
+    finalMovieUrl,
+  ]);
+
+  function handleClearProject() {
+    const shouldClear = window.confirm(
+      "Are you sure you want to clear this project?"
+    );
+
+    if (!shouldClear) return;
+
+    localStorage.removeItem(STORAGE_KEY);
+    setMovieTitle("");
+    setMovieIdea("");
+    setScenes([]);
+    setStyle("Cinematic");
+    setSceneLength(5);
+    setAspectRatio("16:9");
+    setFinalMovieUrl("");
+  }
 
   async function handleGenerateStoryboard() {
     try {
@@ -221,6 +310,16 @@ function Dashboard() {
         onMovieIdeaChange={setMovieIdea}
         onGenerateStoryboard={handleGenerateStoryboard}
       />
+
+      <div className="d-flex justify-content-end mb-5">
+        <button
+          className="btn btn-outline-danger"
+          type="button"
+          onClick={handleClearProject}
+        >
+          Clear Saved Project
+        </button>
+      </div>
 
       {isLoading && (
         <div className="card card-dark p-4 mb-5 text-center">
