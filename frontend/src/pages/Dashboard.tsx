@@ -6,63 +6,29 @@ import {
   generateSceneVideo,
   generateStoryboard,
 } from "../api/filmApi";
+import AppMenuBar from "../components/AppMenuBar";
 import FinalMovie from "../components/FinalMovie";
 import Hero from "../components/Hero";
 import MediaLibrary from "../components/MediaLibrary";
 import MediaPipeline from "../components/MediaPipeline";
 import ProjectForm from "../components/ProjectForm";
+import ProjectManager from "../components/ProjectManager";
 import ProjectSettings from "../components/ProjectSettings";
 import SceneCard from "../components/SceneCard";
 import VideoEditor from "../components/VideoEditor";
 import type { Scene } from "../types/film";
-
-const STORAGE_KEY = "ai-film-studio-project";
-
-interface SavedProject {
-  movieTitle: string;
-  movieIdea: string;
-  scenes: Scene[];
-  style: string;
-  sceneLength: number;
-  aspectRatio: string;
-  finalMovieUrl: string;
-}
-
-const defaultProject: SavedProject = {
-  movieTitle: "",
-  movieIdea: "",
-  scenes: [],
-  style: "Cinematic",
-  sceneLength: 5,
-  aspectRatio: "16:9",
-  finalMovieUrl: "",
-};
-
-function loadSavedProject(): SavedProject {
-  try {
-    const savedProject = localStorage.getItem(STORAGE_KEY);
-
-    if (!savedProject) {
-      return defaultProject;
-    }
-
-    const parsedProject = JSON.parse(savedProject) as Partial<SavedProject>;
-
-    return {
-      movieTitle: parsedProject.movieTitle ?? "",
-      movieIdea: parsedProject.movieIdea ?? "",
-      scenes: parsedProject.scenes ?? [],
-      style: parsedProject.style ?? "Cinematic",
-      sceneLength: parsedProject.sceneLength ?? 5,
-      aspectRatio: parsedProject.aspectRatio ?? "16:9",
-      finalMovieUrl: parsedProject.finalMovieUrl ?? "",
-    };
-  } catch (error) {
-    console.error("Failed to load saved project:", error);
-    localStorage.removeItem(STORAGE_KEY);
-    return defaultProject;
-  }
-}
+import {
+  createAndSaveProject,
+  defaultProjectData,
+  deleteStoredProject,
+  duplicateStoredProject,
+  getInitialProject,
+  getStoredProjects,
+  setActiveProjectId,
+  updateStoredProject,
+  type SavedProjectData,
+  type StoredProject,
+} from "../utils/projectStorage";
 
 function getSceneSeconds(scene: Scene, fallbackSceneLength: number) {
   const parsedSeconds = Number(String(scene.duration).replace(/[^0-9.]/g, ""));
@@ -75,16 +41,25 @@ function getSceneSeconds(scene: Scene, fallbackSceneLength: number) {
 }
 
 function Dashboard() {
-  const savedProject = useMemo(() => loadSavedProject(), []);
+  const initialProject = useMemo(() => getInitialProject(), []);
 
-  const [movieTitle, setMovieTitle] = useState(savedProject.movieTitle);
-  const [movieIdea, setMovieIdea] = useState(savedProject.movieIdea);
-  const [scenes, setScenes] = useState<Scene[]>(savedProject.scenes);
+  const [projects, setProjects] = useState<StoredProject[]>(() =>
+    getStoredProjects()
+  );
+  const [activeProjectId, setActiveProjectIdState] = useState(initialProject.id);
+
+  const [movieTitle, setMovieTitle] = useState(initialProject.data.movieTitle);
+  const [movieIdea, setMovieIdea] = useState(initialProject.data.movieIdea);
+  const [scenes, setScenes] = useState<Scene[]>(initialProject.data.scenes);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [style, setStyle] = useState(savedProject.style);
-  const [sceneLength, setSceneLength] = useState(savedProject.sceneLength);
-  const [aspectRatio, setAspectRatio] = useState(savedProject.aspectRatio);
+  const [style, setStyle] = useState(initialProject.data.style);
+  const [sceneLength, setSceneLength] = useState(
+    initialProject.data.sceneLength
+  );
+  const [aspectRatio, setAspectRatio] = useState(
+    initialProject.data.aspectRatio
+  );
 
   const [generatingImageSceneId, setGeneratingImageSceneId] =
     useState<number | null>(null);
@@ -94,21 +69,49 @@ function Dashboard() {
     useState<number | null>(null);
 
   const [isGeneratingFullMovie, setIsGeneratingFullMovie] = useState(false);
-  const [finalMovieUrl, setFinalMovieUrl] = useState(savedProject.finalMovieUrl);
+  const [finalMovieUrl, setFinalMovieUrl] = useState(
+    initialProject.data.finalMovieUrl
+  );
+
+  const currentProjectData: SavedProjectData = {
+    movieTitle,
+    movieIdea,
+    scenes,
+    style,
+    sceneLength,
+    aspectRatio,
+    finalMovieUrl,
+  };
+
+  function loadProjectIntoEditor(project: StoredProject) {
+    setActiveProjectId(project.id);
+    setActiveProjectIdState(project.id);
+
+    setMovieTitle(project.data.movieTitle);
+    setMovieIdea(project.data.movieIdea);
+    setScenes(project.data.scenes);
+    setStyle(project.data.style);
+    setSceneLength(project.data.sceneLength);
+    setAspectRatio(project.data.aspectRatio);
+    setFinalMovieUrl(project.data.finalMovieUrl);
+
+    setGeneratingImageSceneId(null);
+    setGeneratingAudioSceneId(null);
+    setGeneratingVideoSceneId(null);
+    setIsGeneratingFullMovie(false);
+  }
 
   useEffect(() => {
-    const projectToSave: SavedProject = {
-      movieTitle,
-      movieIdea,
-      scenes,
-      style,
-      sceneLength,
-      aspectRatio,
-      finalMovieUrl,
-    };
+    const updatedProject = updateStoredProject(
+      activeProjectId,
+      currentProjectData
+    );
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projectToSave));
+    if (updatedProject) {
+      setProjects(getStoredProjects());
+    }
   }, [
+    activeProjectId,
     movieTitle,
     movieIdea,
     scenes,
@@ -118,21 +121,67 @@ function Dashboard() {
     finalMovieUrl,
   ]);
 
-  function handleClearProject() {
+  function handleCreateProject() {
+    const project = createAndSaveProject("Untitled Project");
+    setProjects(getStoredProjects());
+    loadProjectIntoEditor(project);
+  }
+
+  function handleOpenProject(projectId: string) {
+    const project = getStoredProjects().find(
+      (storedProject) => storedProject.id === projectId
+    );
+
+    if (!project) return;
+
+    loadProjectIntoEditor(project);
+  }
+
+  function handleDuplicateProject(projectId: string) {
+    const duplicatedProject = duplicateStoredProject(projectId);
+
+    if (!duplicatedProject) return;
+
+    setProjects(getStoredProjects());
+    loadProjectIntoEditor(duplicatedProject);
+  }
+
+  function handleDeleteProject(projectId: string) {
+    const shouldDelete = window.confirm(
+      "Are you sure you want to delete this project?"
+    );
+
+    if (!shouldDelete) return;
+
+    const remainingProjects = deleteStoredProject(projectId);
+    setProjects(remainingProjects);
+
+    if (projectId !== activeProjectId) return;
+
+    if (remainingProjects[0]) {
+      loadProjectIntoEditor(remainingProjects[0]);
+      return;
+    }
+
+    const newProject = createAndSaveProject("Untitled Project");
+    setProjects(getStoredProjects());
+    loadProjectIntoEditor(newProject);
+  }
+
+  function handleClearCurrentProject() {
     const shouldClear = window.confirm(
-      "Are you sure you want to clear this project?"
+      "Are you sure you want to clear the current project?"
     );
 
     if (!shouldClear) return;
 
-    localStorage.removeItem(STORAGE_KEY);
-    setMovieTitle("");
-    setMovieIdea("");
-    setScenes([]);
-    setStyle("Cinematic");
-    setSceneLength(5);
-    setAspectRatio("16:9");
-    setFinalMovieUrl("");
+    setMovieTitle(defaultProjectData.movieTitle);
+    setMovieIdea(defaultProjectData.movieIdea);
+    setScenes(defaultProjectData.scenes);
+    setStyle(defaultProjectData.style);
+    setSceneLength(defaultProjectData.sceneLength);
+    setAspectRatio(defaultProjectData.aspectRatio);
+    setFinalMovieUrl(defaultProjectData.finalMovieUrl);
   }
 
   async function handleGenerateStoryboard() {
@@ -291,93 +340,107 @@ function Dashboard() {
   }
 
   return (
-    <main className="container py-5">
-      <Hero />
+    <>
+      <AppMenuBar />
 
-      <ProjectSettings
-        style={style}
-        sceneLength={sceneLength}
-        aspectRatio={aspectRatio}
-        onStyleChange={setStyle}
-        onSceneLengthChange={setSceneLength}
-        onAspectRatioChange={setAspectRatio}
-      />
+      <main className="container py-5">
+        <Hero />
 
-      <ProjectForm
-        movieTitle={movieTitle}
-        movieIdea={movieIdea}
-        onMovieTitleChange={setMovieTitle}
-        onMovieIdeaChange={setMovieIdea}
-        onGenerateStoryboard={handleGenerateStoryboard}
-      />
+        <ProjectManager
+          projects={projects}
+          activeProjectId={activeProjectId}
+          currentProjectData={currentProjectData}
+          onCreateProject={handleCreateProject}
+          onOpenProject={handleOpenProject}
+          onDuplicateProject={handleDuplicateProject}
+          onDeleteProject={handleDeleteProject}
+        />
 
-      <div className="d-flex justify-content-end mb-5">
-        <button
-          className="btn btn-outline-danger"
-          type="button"
-          onClick={handleClearProject}
-        >
-          Clear Saved Project
-        </button>
-      </div>
+        <ProjectSettings
+          style={style}
+          sceneLength={sceneLength}
+          aspectRatio={aspectRatio}
+          onStyleChange={setStyle}
+          onSceneLengthChange={setSceneLength}
+          onAspectRatioChange={setAspectRatio}
+        />
 
-      {isLoading && (
-        <div className="card card-dark p-4 mb-5 text-center">
-          <h2 className="h4 fw-bold mb-2">Generating storyboard...</h2>
-          <p className="muted-text">
-            AI Film Studio is creating your first scene structure.
-          </p>
+        <ProjectForm
+          movieTitle={movieTitle}
+          movieIdea={movieIdea}
+          onMovieTitleChange={setMovieTitle}
+          onMovieIdeaChange={setMovieIdea}
+          onGenerateStoryboard={handleGenerateStoryboard}
+        />
+
+        <div className="d-flex justify-content-end mb-5">
+          <button
+            className="btn btn-outline-danger"
+            type="button"
+            onClick={handleClearCurrentProject}
+          >
+            Clear Current Project
+          </button>
         </div>
-      )}
 
-      {scenes.length > 0 && (
-        <>
-          <section className="mb-5">
-            <h2 className="h3 fw-bold mb-4">Storyboard</h2>
-
-            <div className="row g-4">
-              {scenes.map((scene) => (
-                <SceneCard
-                  key={scene.id}
-                  scene={scene}
-                  onGenerateImage={handleGenerateImage}
-                  onGenerateAudio={handleGenerateAudio}
-                  onGenerateVideo={handleGenerateVideo}
-                  isGeneratingImage={generatingImageSceneId === scene.id}
-                  isGeneratingAudio={generatingAudioSceneId === scene.id}
-                  isGeneratingVideo={generatingVideoSceneId === scene.id}
-                />
-              ))}
-            </div>
-          </section>
-
-          <VideoEditor scenes={scenes} setScenes={setScenes} />
-
-          <MediaPipeline />
-
-          <MediaLibrary scenes={scenes} />
-
-          <section className="card card-dark p-4 mt-5">
-            <h2 className="h4 fw-bold mb-3">Export Movie</h2>
-            <p className="muted-text mb-3">
-              Combine all generated scene videos into one final movie.
+        {isLoading && (
+          <div className="card card-dark p-4 mb-5 text-center">
+            <h2 className="h4 fw-bold mb-2">Generating storyboard...</h2>
+            <p className="muted-text">
+              AI Film Studio is creating your first scene structure.
             </p>
+          </div>
+        )}
 
-            <button
-              className="btn btn-gradient"
-              onClick={handleGenerateFullMovie}
-              disabled={isGeneratingFullMovie}
-            >
-              {isGeneratingFullMovie
-                ? "Generating final movie..."
-                : "Generate Full Movie"}
-            </button>
-          </section>
+        {scenes.length > 0 && (
+          <>
+            <section className="mb-5">
+              <h2 className="h3 fw-bold mb-4">Storyboard</h2>
 
-          {finalMovieUrl && <FinalMovie finalMovieUrl={finalMovieUrl} />}
-        </>
-      )}
-    </main>
+              <div className="row g-4">
+                {scenes.map((scene) => (
+                  <SceneCard
+                    key={scene.id}
+                    scene={scene}
+                    onGenerateImage={handleGenerateImage}
+                    onGenerateAudio={handleGenerateAudio}
+                    onGenerateVideo={handleGenerateVideo}
+                    isGeneratingImage={generatingImageSceneId === scene.id}
+                    isGeneratingAudio={generatingAudioSceneId === scene.id}
+                    isGeneratingVideo={generatingVideoSceneId === scene.id}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <VideoEditor scenes={scenes} setScenes={setScenes} />
+
+            <MediaPipeline />
+
+            <MediaLibrary scenes={scenes} />
+
+            <section className="card card-dark p-4 mt-5">
+              <h2 className="h4 fw-bold mb-3">Export Movie</h2>
+              <p className="muted-text mb-3">
+                Combine all generated scene videos into one final movie.
+              </p>
+
+              <button
+                className="btn btn-gradient"
+                onClick={handleGenerateFullMovie}
+                disabled={isGeneratingFullMovie}
+              >
+                {isGeneratingFullMovie
+                  ? "Generating final movie..."
+                  : "Generate Full Movie"}
+              </button>
+            </section>
+
+            {finalMovieUrl && <FinalMovie finalMovieUrl={finalMovieUrl} />}
+          </>
+        )}
+      </main>
+    </>
   );
 }
 
