@@ -6,6 +6,10 @@ import {
   generateSceneVideo,
   generateStoryboard,
 } from "../api/filmApi";
+import {
+  getGenerationQueue,
+  startGenerationQueue,
+} from "../api/generationQueueApi";
 import AppMenuBar from "../components/AppMenuBar";
 import FinalMovie from "../components/FinalMovie";
 import GenerationQueue, {
@@ -128,62 +132,6 @@ function Dashboard() {
     aspectRatio,
     finalMovieUrl,
   ]);
-
-  function buildQueueSteps(currentScenes: Scene[]): QueueStep[] {
-    return currentScenes.flatMap((scene) => {
-      const steps: QueueStep[] = [];
-
-      if (!scene.imageUrl) {
-        steps.push({
-          id: `${scene.id}-image`,
-          sceneId: scene.id,
-          sceneTitle: scene.title,
-          type: "image",
-          status: "waiting",
-        });
-      }
-
-      if (!scene.audioUrl) {
-        steps.push({
-          id: `${scene.id}-audio`,
-          sceneId: scene.id,
-          sceneTitle: scene.title,
-          type: "audio",
-          status: "waiting",
-        });
-      }
-
-      if (!scene.videoUrl) {
-        steps.push({
-          id: `${scene.id}-video`,
-          sceneId: scene.id,
-          sceneTitle: scene.title,
-          type: "video",
-          status: "waiting",
-        });
-      }
-
-      return steps;
-    });
-  }
-
-  function updateQueueStep(
-    stepId: string,
-    status: QueueStep["status"],
-    error?: string
-  ) {
-    setQueueSteps((currentSteps) =>
-      currentSteps.map((step) =>
-        step.id === stepId
-          ? {
-              ...step,
-              status,
-              error,
-            }
-          : step
-      )
-    );
-  }
 
   function handleClearQueue() {
     if (isRunningQueue) return;
@@ -387,130 +335,52 @@ function Dashboard() {
   async function handleGenerateAllMedia() {
     if (scenes.length === 0 || isRunningQueue) return;
 
-    const initialSteps = buildQueueSteps(scenes);
-
-    if (initialSteps.length === 0) {
-      alert("All scenes already have image, audio and video.");
-      return;
-    }
-
-    setQueueSteps(initialSteps);
-    setIsRunningQueue(true);
-
-    let workingScenes = [...scenes];
-
     try {
-      for (const step of initialSteps) {
-        updateQueueStep(step.id, "running");
+      setIsRunningQueue(true);
 
-        const latestScene = workingScenes.find(
-          (scene) => scene.id === step.sceneId
-        );
+      const startedQueue = await startGenerationQueue({
+        scenes,
+        style,
+        sceneLength,
+        aspectRatio,
+      });
 
-        if (!latestScene) {
-          updateQueueStep(step.id, "failed", "Scene was not found.");
-          continue;
-        }
+      const batchId = startedQueue.batch_id || startedQueue.id;
 
+      if (!batchId) {
+        throw new Error("No queue batch ID returned from backend.");
+      }
+
+      setQueueSteps(startedQueue.steps ?? []);
+
+      const intervalId = window.setInterval(async () => {
         try {
-          if (step.type === "image") {
-            setGeneratingImageSceneId(latestScene.id);
+          const queue = await getGenerationQueue(batchId);
 
-            const result = await generateSceneImage({
-              scene_title: latestScene.title,
-              narration: latestScene.narration,
-              mood: latestScene.mood,
-              style,
-            });
+          setQueueSteps(queue.steps ?? []);
 
-            workingScenes = workingScenes.map((scene) =>
-              scene.id === latestScene.id
-                ? {
-                    ...scene,
-                    imageUrl: result.image_url,
-                    imagePrompt: result.prompt,
-                  }
-                : scene
-            );
-
-            setScenes(workingScenes);
-            updateQueueStep(step.id, "done");
+          if (queue.scenes?.length > 0) {
+            setScenes(queue.scenes);
           }
 
-          if (step.type === "audio") {
-            setGeneratingAudioSceneId(latestScene.id);
-
-            const result = await generateSceneAudio({
-              scene_title: latestScene.title,
-              narration: latestScene.narration,
-              voice: "alloy",
-            });
-
-            workingScenes = workingScenes.map((scene) =>
-              scene.id === latestScene.id
-                ? {
-                    ...scene,
-                    audioUrl: result.audio_url,
-                    audioPrompt: result.prompt,
-                  }
-                : scene
-            );
-
-            setScenes(workingScenes);
-            updateQueueStep(step.id, "done");
-          }
-
-          if (step.type === "video") {
-            const sceneWithMedia = workingScenes.find(
-              (scene) => scene.id === latestScene.id
-            );
-
-            if (!sceneWithMedia?.imageUrl || !sceneWithMedia?.audioUrl) {
-              updateQueueStep(
-                step.id,
-                "failed",
-                "Image and audio are required before video."
-              );
-              continue;
-            }
-
-            setGeneratingVideoSceneId(sceneWithMedia.id);
-
-            const result = await generateSceneVideo({
-              scene_title: sceneWithMedia.title,
-              image_url: sceneWithMedia.imageUrl,
-              audio_url: sceneWithMedia.audioUrl,
-              scene_length: getSceneSeconds(sceneWithMedia, sceneLength),
-              aspect_ratio: aspectRatio,
-            });
-
-            workingScenes = workingScenes.map((scene) =>
-              scene.id === sceneWithMedia.id
-                ? {
-                    ...scene,
-                    videoUrl: result.video_url,
-                    videoPrompt: result.prompt,
-                  }
-                : scene
-            );
-
-            setScenes(workingScenes);
-            updateQueueStep(step.id, "done");
+          if (
+            queue.status === "completed" ||
+            queue.status === "completed_with_errors" ||
+            queue.status === "failed" ||
+            queue.status === "not_found"
+          ) {
+            window.clearInterval(intervalId);
+            setIsRunningQueue(false);
           }
         } catch (error) {
-          console.error("Queue step failed:", error);
-          updateQueueStep(
-            step.id,
-            "failed",
-            error instanceof Error ? error.message : "Generation failed."
-          );
-        } finally {
-          setGeneratingImageSceneId(null);
-          setGeneratingAudioSceneId(null);
-          setGeneratingVideoSceneId(null);
+          console.error("Failed to poll generation queue:", error);
+          window.clearInterval(intervalId);
+          setIsRunningQueue(false);
         }
-      }
-    } finally {
+      }, 1500);
+    } catch (error) {
+      console.error("Failed to start generation queue:", error);
+      alert("Could not start generation queue. Check your backend terminal.");
       setIsRunningQueue(false);
     }
   }
