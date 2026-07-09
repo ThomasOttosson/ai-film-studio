@@ -39,7 +39,9 @@ export async function startGenerationQueue(
 }
 
 export async function getGenerationQueue(batchId: string) {
-  const response = await fetch(`${API_BASE_URL}/api/generation-queue/${batchId}`);
+  const response = await fetch(
+    `${API_BASE_URL}/api/generation-queue/${batchId}`
+  );
 
   if (!response.ok) {
     throw new Error("Failed to fetch generation queue");
@@ -58,6 +60,21 @@ export async function cancelGenerationQueue(batchId: string) {
 
   if (!response.ok) {
     throw new Error("Failed to cancel generation queue");
+  }
+
+  return response.json() as Promise<GenerationQueueResponse>;
+}
+
+export async function retryFailedGenerationQueue(batchId: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/generation-queue/${batchId}/retry-failed`,
+    {
+      method: "POST",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to retry failed generation queue");
   }
 
   return response.json() as Promise<GenerationQueueResponse>;

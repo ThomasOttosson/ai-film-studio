@@ -9,6 +9,7 @@ from generation_queue import (
     enqueue_generation_batch,
     get_generation_batch,
     request_cancel_generation_batch,
+    retry_failed_generation_batch,
 )
 
 load_dotenv()
@@ -85,6 +86,25 @@ def get_generation_queue(batch_id: str):
 @app.post("/api/generation-queue/{batch_id}/cancel")
 def cancel_generation_queue(batch_id: str):
     batch = request_cancel_generation_batch(batch_id)
+
+    if not batch:
+        return {
+            "status": "not_found",
+            "message": "Generation batch was not found.",
+        }
+
+    return {
+        "batch_id": batch["id"],
+        "status": batch["status"],
+        "cancel_requested": batch.get("cancel_requested", False),
+        "steps": batch["steps"],
+        "scenes": batch["scenes"],
+    }
+
+
+@app.post("/api/generation-queue/{batch_id}/retry-failed")
+def retry_failed_generation_queue(batch_id: str):
+    batch = retry_failed_generation_batch(batch_id)
 
     if not batch:
         return {

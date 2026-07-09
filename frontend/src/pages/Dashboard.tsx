@@ -9,6 +9,7 @@ import {
 import {
   cancelGenerationQueue,
   getGenerationQueue,
+  retryFailedGenerationQueue,
   startGenerationQueue,
 } from "../api/generationQueueApi";
 import AppMenuBar from "../components/AppMenuBar";
@@ -111,6 +112,39 @@ function Dashboard() {
       stopQueuePolling();
     };
   }, []);
+
+  function startPollingQueue(batchId: string, logPrefix = "generation queue") {
+    stopQueuePolling();
+
+    queuePollingIntervalRef.current = window.setInterval(async () => {
+      try {
+        const queue = await getGenerationQueue(batchId);
+
+        setQueueSteps(queue.steps ?? []);
+
+        if (queue.scenes?.length > 0) {
+          setScenes(queue.scenes);
+        }
+
+        if (
+          queue.status === "completed" ||
+          queue.status === "completed_with_errors" ||
+          queue.status === "failed" ||
+          queue.status === "cancelled" ||
+          queue.status === "not_found"
+        ) {
+          stopQueuePolling();
+          setIsRunningQueue(false);
+          setIsCancellingQueue(false);
+        }
+      } catch (error) {
+        console.error(`Failed to poll ${logPrefix}:`, error);
+        stopQueuePolling();
+        setIsRunningQueue(false);
+        setIsCancellingQueue(false);
+      }
+    }, 2000);
+  }
 
   function loadProjectIntoEditor(project: StoredProject) {
     stopQueuePolling();
@@ -396,6 +430,32 @@ function Dashboard() {
     }
   }
 
+  async function handleRetryFailedQueue() {
+    if (!activeQueueBatchId || isRunningQueue) return;
+
+    try {
+      stopQueuePolling();
+      setIsRunningQueue(true);
+      setIsCancellingQueue(false);
+
+      const retriedQueue = await retryFailedGenerationQueue(activeQueueBatchId);
+
+      setQueueSteps(retriedQueue.steps ?? []);
+
+      if (retriedQueue.scenes?.length > 0) {
+        setScenes(retriedQueue.scenes);
+      }
+
+      startPollingQueue(activeQueueBatchId, "retried generation queue");
+    } catch (error) {
+      console.error("Failed to retry failed queue:", error);
+      alert("Could not retry failed generation steps.");
+      stopQueuePolling();
+      setIsRunningQueue(false);
+      setIsCancellingQueue(false);
+    }
+  }
+
   async function handleGenerateAllMedia() {
     if (scenes.length === 0 || isRunningQueue) return;
 
@@ -420,34 +480,7 @@ function Dashboard() {
       setActiveQueueBatchId(batchId);
       setQueueSteps(startedQueue.steps ?? []);
 
-      queuePollingIntervalRef.current = window.setInterval(async () => {
-        try {
-          const queue = await getGenerationQueue(batchId);
-
-          setQueueSteps(queue.steps ?? []);
-
-          if (queue.scenes?.length > 0) {
-            setScenes(queue.scenes);
-          }
-
-          if (
-            queue.status === "completed" ||
-            queue.status === "completed_with_errors" ||
-            queue.status === "failed" ||
-            queue.status === "cancelled" ||
-            queue.status === "not_found"
-          ) {
-            stopQueuePolling();
-            setIsRunningQueue(false);
-            setIsCancellingQueue(false);
-          }
-        } catch (error) {
-          console.error("Failed to poll generation queue:", error);
-          stopQueuePolling();
-          setIsRunningQueue(false);
-          setIsCancellingQueue(false);
-        }
-      }, 2000);
+      startPollingQueue(batchId);
     } catch (error) {
       console.error("Failed to start generation queue:", error);
       alert("Could not start generation queue. Check your backend terminal.");
@@ -548,6 +581,7 @@ function Dashboard() {
               onGenerateAll={handleGenerateAllMedia}
               onClearQueue={handleClearQueue}
               onCancelQueue={handleCancelQueue}
+              onRetryFailed={handleRetryFailedQueue}
             />
 
             <section className="mb-5">

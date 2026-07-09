@@ -22,6 +22,7 @@ interface GenerationQueueProps {
   onGenerateAll: () => void;
   onClearQueue: () => void;
   onCancelQueue: () => void;
+  onRetryFailed: () => void;
 }
 
 function getStatusLabel(status: QueueStatus) {
@@ -52,18 +53,13 @@ function GenerationQueue({
   onGenerateAll,
   onClearQueue,
   onCancelQueue,
+  onRetryFailed,
 }: GenerationQueueProps) {
   const [isOpen, setIsOpen] = useState(true);
 
-  const completedSteps = queueSteps.filter(
-    (step) => step.status === "done"
-  ).length;
-  const failedSteps = queueSteps.filter(
-    (step) => step.status === "failed"
-  ).length;
-  const cancelledSteps = queueSteps.filter(
-    (step) => step.status === "cancelled"
-  ).length;
+  const completedSteps = queueSteps.filter((step) => step.status === "done").length;
+  const failedSteps = queueSteps.filter((step) => step.status === "failed").length;
+  const cancelledSteps = queueSteps.filter((step) => step.status === "cancelled").length;
 
   const progress =
     queueSteps.length > 0
@@ -91,6 +87,15 @@ function GenerationQueue({
             onClick={() => setIsOpen((current) => !current)}
           >
             {isOpen ? "Hide Queue" : "Show Queue"}
+          </button>
+
+          <button
+            className="btn btn-outline-info"
+            type="button"
+            onClick={onRetryFailed}
+            disabled={isRunning || failedSteps === 0}
+          >
+            Retry Failed
           </button>
 
           <button

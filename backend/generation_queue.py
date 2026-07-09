@@ -336,3 +336,34 @@ async def process_generation_batch(batch_id: str) -> None:
     has_failed_steps = any(step["status"] == "failed" for step in batch["steps"])
     batch["status"] = "completed_with_errors" if has_failed_steps else "completed"
     save_generation_batch(batch)
+
+
+def retry_failed_generation_batch(batch_id: str) -> dict[str, Any] | None:
+    batch = get_generation_batch(batch_id)
+
+    if not batch:
+        return None
+
+    failed_steps = []
+
+    for step in batch["steps"]:
+        if step["status"] == "failed":
+            retry_step = {
+                **step,
+                "status": "waiting",
+            }
+
+            retry_step.pop("error", None)
+            failed_steps.append(retry_step)
+
+    if not failed_steps:
+        return batch
+
+    batch["steps"] = failed_steps
+    batch["status"] = "waiting"
+    batch["cancel_requested"] = False
+
+    save_generation_batch(batch)
+    enqueue_generation_batch(batch["id"])
+
+    return batch
