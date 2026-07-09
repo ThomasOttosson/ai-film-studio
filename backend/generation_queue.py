@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from datetime import datetime
 from typing import Any
@@ -6,7 +7,12 @@ from typing import Any
 import httpx
 from redis_client import redis_client
 
-INTERNAL_API_BASE_URL = "http://localhost:8000"
+INTERNAL_API_BASE_URL = os.getenv(
+    "INTERNAL_API_BASE_URL",
+    "http://backend:8000",
+)
+
+QUEUE_LIST_KEY = "ai-film-studio:generation-jobs"
 
 
 def now_iso() -> str:
@@ -15,6 +21,13 @@ def now_iso() -> str:
 
 def queue_key(batch_id: str) -> str:
     return f"ai-film-studio:generation-queue:{batch_id}"
+
+
+def enqueue_generation_batch(batch_id: str) -> None:
+    redis_client.rpush(
+        QUEUE_LIST_KEY,
+        json.dumps({"batch_id": batch_id}),
+    )
 
 
 def create_generation_batch(payload: dict[str, Any]) -> dict[str, Any]:
@@ -133,7 +146,11 @@ async def process_generation_batch(batch_id: str) -> None:
             update_step(batch, step["id"], "running")
 
             scene = next(
-                (current_scene for current_scene in batch["scenes"] if current_scene["id"] == step["sceneId"]),
+                (
+                    current_scene
+                    for current_scene in batch["scenes"]
+                    if current_scene["id"] == step["sceneId"]
+                ),
                 None,
             )
 
@@ -190,11 +207,19 @@ async def process_generation_batch(batch_id: str) -> None:
                 if step["type"] == "video":
                     fresh_batch = get_generation_batch(batch_id) or batch
                     fresh_scene = next(
-                        (current_scene for current_scene in fresh_batch["scenes"] if current_scene["id"] == scene["id"]),
+                        (
+                            current_scene
+                            for current_scene in fresh_batch["scenes"]
+                            if current_scene["id"] == scene["id"]
+                        ),
                         None,
                     )
 
-                    if not fresh_scene or not fresh_scene.get("imageUrl") or not fresh_scene.get("audioUrl"):
+                    if (
+                        not fresh_scene
+                        or not fresh_scene.get("imageUrl")
+                        or not fresh_scene.get("audioUrl")
+                    ):
                         update_step(
                             batch,
                             step["id"],

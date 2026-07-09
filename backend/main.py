@@ -1,13 +1,13 @@
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from redis_client import redis_client
 
-from fastapi import BackgroundTasks
 from generation_queue import (
     create_generation_batch,
+    enqueue_generation_batch,
     get_generation_batch,
-    process_generation_batch,
 )
 
 load_dotenv()
@@ -30,6 +30,7 @@ app.include_router(audio.router)
 app.include_router(video.router)
 app.include_router(movie.router)
 
+
 @app.get("/")
 def root():
     return {"message": "AI Film Studio API is running"}
@@ -42,9 +43,11 @@ def health_check():
         "service": "AI Film Studio Backend",
     }
 
+
 @app.get("/api/redis-health")
 def redis_health():
     redis_client.set("ai-film-studio:redis-test", "Redis is working")
+
     value = redis_client.get("ai-film-studio:redis-test")
 
     return {
@@ -52,10 +55,12 @@ def redis_health():
         "redis": value,
     }
 
+
 @app.post("/api/generation-queue")
-async def start_generation_queue(payload: dict, background_tasks: BackgroundTasks):
+async def start_generation_queue(payload: dict):
     batch = create_generation_batch(payload)
-    background_tasks.add_task(process_generation_batch, batch["id"])
+
+    enqueue_generation_batch(batch["id"])
 
     return {
         "batch_id": batch["id"],
