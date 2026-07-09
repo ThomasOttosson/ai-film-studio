@@ -79,6 +79,7 @@ function Dashboard() {
 
   const [queueSteps, setQueueSteps] = useState<QueueStep[]>([]);
   const [isRunningQueue, setIsRunningQueue] = useState(false);
+  const [isCancellingQueue, setIsCancellingQueue] = useState(false);
   const [activeQueueBatchId, setActiveQueueBatchId] = useState<string | null>(
     null
   );
@@ -130,6 +131,7 @@ function Dashboard() {
     setGeneratingVideoSceneId(null);
     setIsGeneratingFullMovie(false);
     setIsRunningQueue(false);
+    setIsCancellingQueue(false);
     setQueueSteps([]);
     setActiveQueueBatchId(null);
   }
@@ -159,6 +161,7 @@ function Dashboard() {
 
     stopQueuePolling();
     setQueueSteps([]);
+    setIsCancellingQueue(false);
     setActiveQueueBatchId(null);
   }
 
@@ -227,6 +230,7 @@ function Dashboard() {
     setFinalMovieUrl(defaultProjectData.finalMovieUrl);
     setQueueSteps([]);
     setIsRunningQueue(false);
+    setIsCancellingQueue(false);
     setActiveQueueBatchId(null);
   }
 
@@ -253,6 +257,7 @@ function Dashboard() {
 
       setQueueSteps([]);
       setIsRunningQueue(false);
+      setIsCancellingQueue(false);
       setActiveQueueBatchId(null);
       setFinalMovieUrl("");
     } catch (error) {
@@ -363,9 +368,11 @@ function Dashboard() {
   }
 
   async function handleCancelQueue() {
-    if (!activeQueueBatchId) return;
+    if (!activeQueueBatchId || isCancellingQueue) return;
 
     try {
+      setIsCancellingQueue(true);
+
       const cancelledQueue = await cancelGenerationQueue(activeQueueBatchId);
 
       setQueueSteps(cancelledQueue.steps ?? []);
@@ -373,9 +380,19 @@ function Dashboard() {
       if (cancelledQueue.scenes?.length > 0) {
         setScenes(cancelledQueue.scenes);
       }
+
+      if (
+        cancelledQueue.status === "cancelled" ||
+        cancelledQueue.status === "not_found"
+      ) {
+        stopQueuePolling();
+        setIsRunningQueue(false);
+        setIsCancellingQueue(false);
+      }
     } catch (error) {
       console.error("Failed to cancel queue:", error);
       alert("Could not cancel generation queue.");
+      setIsCancellingQueue(false);
     }
   }
 
@@ -385,6 +402,7 @@ function Dashboard() {
     try {
       stopQueuePolling();
       setIsRunningQueue(true);
+      setIsCancellingQueue(false);
 
       const startedQueue = await startGenerationQueue({
         scenes,
@@ -421,11 +439,13 @@ function Dashboard() {
           ) {
             stopQueuePolling();
             setIsRunningQueue(false);
+            setIsCancellingQueue(false);
           }
         } catch (error) {
           console.error("Failed to poll generation queue:", error);
           stopQueuePolling();
           setIsRunningQueue(false);
+          setIsCancellingQueue(false);
         }
       }, 2000);
     } catch (error) {
@@ -433,6 +453,7 @@ function Dashboard() {
       alert("Could not start generation queue. Check your backend terminal.");
       stopQueuePolling();
       setIsRunningQueue(false);
+      setIsCancellingQueue(false);
       setActiveQueueBatchId(null);
     }
   }
@@ -522,6 +543,7 @@ function Dashboard() {
             <GenerationQueue
               scenes={scenes}
               isRunning={isRunningQueue}
+              isCancelling={isCancellingQueue}
               queueSteps={queueSteps}
               onGenerateAll={handleGenerateAllMedia}
               onClearQueue={handleClearQueue}

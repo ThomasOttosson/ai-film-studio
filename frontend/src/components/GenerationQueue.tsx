@@ -17,6 +17,7 @@ export interface QueueStep {
 interface GenerationQueueProps {
   scenes: Scene[];
   isRunning: boolean;
+  isCancelling: boolean;
   queueSteps: QueueStep[];
   onGenerateAll: () => void;
   onClearQueue: () => void;
@@ -46,6 +47,7 @@ function getStepIcon(type: QueueStepType) {
 function GenerationQueue({
   scenes,
   isRunning,
+  isCancelling,
   queueSteps,
   onGenerateAll,
   onClearQueue,
@@ -53,8 +55,12 @@ function GenerationQueue({
 }: GenerationQueueProps) {
   const [isOpen, setIsOpen] = useState(true);
 
-  const completedSteps = queueSteps.filter((step) => step.status === "done").length;
-  const failedSteps = queueSteps.filter((step) => step.status === "failed").length;
+  const completedSteps = queueSteps.filter(
+    (step) => step.status === "done"
+  ).length;
+  const failedSteps = queueSteps.filter(
+    (step) => step.status === "failed"
+  ).length;
   const cancelledSteps = queueSteps.filter(
     (step) => step.status === "cancelled"
   ).length;
@@ -91,9 +97,9 @@ function GenerationQueue({
             className="btn btn-outline-warning"
             type="button"
             onClick={onCancelQueue}
-            disabled={!isRunning}
+            disabled={!isRunning || isCancelling}
           >
-            Cancel Generation
+            {isCancelling ? "Cancelling..." : "Cancel Generation"}
           </button>
 
           <button
@@ -180,7 +186,8 @@ function GenerationQueue({
             <div className="p-4 rounded border bg-dark text-center">
               <h3 className="h5 fw-bold mb-2">Queue is empty</h3>
               <p className="muted-text mb-0">
-                Click Generate All to create images, audio and videos for your scenes.
+                Click Generate All to create images, audio and videos for your
+                scenes.
               </p>
             </div>
           ) : (
