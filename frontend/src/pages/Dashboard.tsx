@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   generateFullMovie,
   generateSceneAudio,
@@ -49,6 +49,7 @@ function getSceneSeconds(scene: Scene, fallbackSceneLength: number) {
 
 function Dashboard() {
   const initialProject = useMemo(() => getInitialProject(), []);
+  const queuePollingIntervalRef = useRef<number | null>(null);
 
   const [projects, setProjects] = useState<StoredProject[]>(() =>
     getStoredProjects()
@@ -93,7 +94,22 @@ function Dashboard() {
     finalMovieUrl,
   };
 
+  function stopQueuePolling() {
+    if (queuePollingIntervalRef.current !== null) {
+      window.clearInterval(queuePollingIntervalRef.current);
+      queuePollingIntervalRef.current = null;
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      stopQueuePolling();
+    };
+  }, []);
+
   function loadProjectIntoEditor(project: StoredProject) {
+    stopQueuePolling();
+
     setActiveProjectId(project.id);
     setActiveProjectIdState(project.id);
 
@@ -135,6 +151,8 @@ function Dashboard() {
 
   function handleClearQueue() {
     if (isRunningQueue) return;
+
+    stopQueuePolling();
     setQueueSteps([]);
   }
 
@@ -192,6 +210,8 @@ function Dashboard() {
 
     if (!shouldClear) return;
 
+    stopQueuePolling();
+
     setMovieTitle(defaultProjectData.movieTitle);
     setMovieIdea(defaultProjectData.movieIdea);
     setScenes(defaultProjectData.scenes);
@@ -205,6 +225,7 @@ function Dashboard() {
 
   async function handleGenerateStoryboard() {
     try {
+      stopQueuePolling();
       setIsLoading(true);
 
       const generatedScenes = await generateStoryboard({
@@ -224,6 +245,7 @@ function Dashboard() {
       );
 
       setQueueSteps([]);
+      setIsRunningQueue(false);
       setFinalMovieUrl("");
     } catch (error) {
       console.error("Failed to generate storyboard:", error);
@@ -336,6 +358,7 @@ function Dashboard() {
     if (scenes.length === 0 || isRunningQueue) return;
 
     try {
+      stopQueuePolling();
       setIsRunningQueue(true);
 
       const startedQueue = await startGenerationQueue({
@@ -353,7 +376,7 @@ function Dashboard() {
 
       setQueueSteps(startedQueue.steps ?? []);
 
-      const intervalId = window.setInterval(async () => {
+      queuePollingIntervalRef.current = window.setInterval(async () => {
         try {
           const queue = await getGenerationQueue(batchId);
 
@@ -369,18 +392,19 @@ function Dashboard() {
             queue.status === "failed" ||
             queue.status === "not_found"
           ) {
-            window.clearInterval(intervalId);
+            stopQueuePolling();
             setIsRunningQueue(false);
           }
         } catch (error) {
           console.error("Failed to poll generation queue:", error);
-          window.clearInterval(intervalId);
+          stopQueuePolling();
           setIsRunningQueue(false);
         }
-      }, 1500);
+      }, 2000);
     } catch (error) {
       console.error("Failed to start generation queue:", error);
       alert("Could not start generation queue. Check your backend terminal.");
+      stopQueuePolling();
       setIsRunningQueue(false);
     }
   }
