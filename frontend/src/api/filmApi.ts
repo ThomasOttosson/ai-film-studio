@@ -1,8 +1,11 @@
 import axios from "axios";
 import type { Scene } from "../types/film";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000",
+  baseURL: API_BASE_URL,
 });
 
 export interface StoryboardRequest {
@@ -53,28 +56,44 @@ export interface VideoResponse {
 export async function generateSceneVideo(
   data: VideoRequest
 ): Promise<VideoResponse> {
-  const response = await api.post<VideoResponse>("/api/generate-video", data);
+  const response = await api.post<VideoResponse>(
+    "/api/generate-video",
+    data
+  );
+
   return response.data;
 }
 
 export async function generateSceneAudio(
   data: AudioRequest
 ): Promise<AudioResponse> {
-  const response = await api.post<AudioResponse>("/api/generate-audio", data);
+  const response = await api.post<AudioResponse>(
+    "/api/generate-audio",
+    data
+  );
+
   return response.data;
 }
 
 export async function generateStoryboard(
   data: StoryboardRequest
 ): Promise<Scene[]> {
-  const response = await api.post<Scene[]>("/api/storyboard", data);
+  const response = await api.post<Scene[]>(
+    "/api/storyboard",
+    data
+  );
+
   return response.data;
 }
 
 export async function generateSceneImage(
   data: ImageRequest
 ): Promise<ImageResponse> {
-  const response = await api.post<ImageResponse>("/api/generate-image", data);
+  const response = await api.post<ImageResponse>(
+    "/api/generate-image",
+    data
+  );
+
   return response.data;
 }
 
