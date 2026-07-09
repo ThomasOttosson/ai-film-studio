@@ -7,6 +7,7 @@ import {
   generateStoryboard,
 } from "../api/filmApi";
 import {
+  cancelGenerationQueue,
   getGenerationQueue,
   startGenerationQueue,
 } from "../api/generationQueueApi";
@@ -78,6 +79,9 @@ function Dashboard() {
 
   const [queueSteps, setQueueSteps] = useState<QueueStep[]>([]);
   const [isRunningQueue, setIsRunningQueue] = useState(false);
+  const [activeQueueBatchId, setActiveQueueBatchId] = useState<string | null>(
+    null
+  );
 
   const [isGeneratingFullMovie, setIsGeneratingFullMovie] = useState(false);
   const [finalMovieUrl, setFinalMovieUrl] = useState(
@@ -127,6 +131,7 @@ function Dashboard() {
     setIsGeneratingFullMovie(false);
     setIsRunningQueue(false);
     setQueueSteps([]);
+    setActiveQueueBatchId(null);
   }
 
   useEffect(() => {
@@ -154,6 +159,7 @@ function Dashboard() {
 
     stopQueuePolling();
     setQueueSteps([]);
+    setActiveQueueBatchId(null);
   }
 
   function handleCreateProject() {
@@ -221,6 +227,7 @@ function Dashboard() {
     setFinalMovieUrl(defaultProjectData.finalMovieUrl);
     setQueueSteps([]);
     setIsRunningQueue(false);
+    setActiveQueueBatchId(null);
   }
 
   async function handleGenerateStoryboard() {
@@ -246,6 +253,7 @@ function Dashboard() {
 
       setQueueSteps([]);
       setIsRunningQueue(false);
+      setActiveQueueBatchId(null);
       setFinalMovieUrl("");
     } catch (error) {
       console.error("Failed to generate storyboard:", error);
@@ -354,6 +362,23 @@ function Dashboard() {
     }
   }
 
+  async function handleCancelQueue() {
+    if (!activeQueueBatchId) return;
+
+    try {
+      const cancelledQueue = await cancelGenerationQueue(activeQueueBatchId);
+
+      setQueueSteps(cancelledQueue.steps ?? []);
+
+      if (cancelledQueue.scenes?.length > 0) {
+        setScenes(cancelledQueue.scenes);
+      }
+    } catch (error) {
+      console.error("Failed to cancel queue:", error);
+      alert("Could not cancel generation queue.");
+    }
+  }
+
   async function handleGenerateAllMedia() {
     if (scenes.length === 0 || isRunningQueue) return;
 
@@ -374,6 +399,7 @@ function Dashboard() {
         throw new Error("No queue batch ID returned from backend.");
       }
 
+      setActiveQueueBatchId(batchId);
       setQueueSteps(startedQueue.steps ?? []);
 
       queuePollingIntervalRef.current = window.setInterval(async () => {
@@ -390,6 +416,7 @@ function Dashboard() {
             queue.status === "completed" ||
             queue.status === "completed_with_errors" ||
             queue.status === "failed" ||
+            queue.status === "cancelled" ||
             queue.status === "not_found"
           ) {
             stopQueuePolling();
@@ -406,6 +433,7 @@ function Dashboard() {
       alert("Could not start generation queue. Check your backend terminal.");
       stopQueuePolling();
       setIsRunningQueue(false);
+      setActiveQueueBatchId(null);
     }
   }
 
@@ -497,6 +525,7 @@ function Dashboard() {
               queueSteps={queueSteps}
               onGenerateAll={handleGenerateAllMedia}
               onClearQueue={handleClearQueue}
+              onCancelQueue={handleCancelQueue}
             />
 
             <section className="mb-5">

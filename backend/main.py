@@ -8,6 +8,7 @@ from generation_queue import (
     create_generation_batch,
     enqueue_generation_batch,
     get_generation_batch,
+    request_cancel_generation_batch,
 )
 
 load_dotenv()
@@ -47,7 +48,6 @@ def health_check():
 @app.get("/api/redis-health")
 def redis_health():
     redis_client.set("ai-film-studio:redis-test", "Redis is working")
-
     value = redis_client.get("ai-film-studio:redis-test")
 
     return {
@@ -59,7 +59,6 @@ def redis_health():
 @app.post("/api/generation-queue")
 async def start_generation_queue(payload: dict):
     batch = create_generation_batch(payload)
-
     enqueue_generation_batch(batch["id"])
 
     return {
@@ -81,3 +80,22 @@ def get_generation_queue(batch_id: str):
         }
 
     return batch
+
+
+@app.post("/api/generation-queue/{batch_id}/cancel")
+def cancel_generation_queue(batch_id: str):
+    batch = request_cancel_generation_batch(batch_id)
+
+    if not batch:
+        return {
+            "status": "not_found",
+            "message": "Generation batch was not found.",
+        }
+
+    return {
+        "batch_id": batch["id"],
+        "status": batch["status"],
+        "cancel_requested": batch.get("cancel_requested", False),
+        "steps": batch["steps"],
+        "scenes": batch["scenes"],
+    }

@@ -70,6 +70,7 @@ def create_generation_batch(payload: dict[str, Any]) -> dict[str, Any]:
     batch = {
         "id": batch_id,
         "status": "waiting",
+        "cancel_requested": False,
         "createdAt": now_iso(),
         "updatedAt": now_iso(),
         "payload": payload,
@@ -95,6 +96,36 @@ def save_generation_batch(batch: dict[str, Any]) -> None:
     redis_client.set(queue_key(batch["id"]), json.dumps(batch))
 
 
+def request_cancel_generation_batch(batch_id: str) -> dict[str, Any] | None:
+    batch = get_generation_batch(batch_id)
+
+    if not batch:
+        return None
+
+    batch["cancel_requested"] = True
+
+    if batch["status"] in ["waiting", "running"]:
+        batch["status"] = "cancel_requested"
+
+    save_generation_batch(batch)
+
+    return batch
+
+
+def is_batch_cancelled(batch: dict[str, Any]) -> bool:
+    return bool(batch.get("cancel_requested"))
+
+
+def mark_batch_cancelled(batch: dict[str, Any]) -> None:
+    batch["status"] = "cancelled"
+
+    for step in batch["steps"]:
+        if step["status"] in ["waiting", "running"]:
+            step["status"] = "cancelled"
+
+    save_generation_batch(batch)
+
+
 def update_step(
     batch: dict[str, Any],
     step_id: str,
@@ -107,6 +138,8 @@ def update_step(
 
             if error:
                 step["error"] = error
+            elif "error" in step:
+                step.pop("error", None)
 
             break
 
@@ -133,6 +166,10 @@ async def process_generation_batch(batch_id: str) -> None:
     if not batch:
         return
 
+    if is_batch_cancelled(batch):
+        mark_batch_cancelled(batch)
+        return
+
     batch["status"] = "running"
     save_generation_batch(batch)
 
@@ -143,6 +180,12 @@ async def process_generation_batch(batch_id: str) -> None:
 
     async with httpx.AsyncClient(timeout=300) as client:
         for step in batch["steps"]:
+            batch = get_generation_batch(batch_id) or batch
+
+            if is_batch_cancelled(batch):
+                mark_batch_cancelled(batch)
+                return
+
             update_step(batch, step["id"], "running")
 
             scene = next(
@@ -173,6 +216,12 @@ async def process_generation_batch(batch_id: str) -> None:
                     response.raise_for_status()
                     result = response.json()
 
+                    batch = get_generation_batch(batch_id) or batch
+
+                    if is_batch_cancelled(batch):
+                        mark_batch_cancelled(batch)
+                        return
+
                     update_scene(
                         batch,
                         scene["id"],
@@ -195,6 +244,12 @@ async def process_generation_batch(batch_id: str) -> None:
                     response.raise_for_status()
                     result = response.json()
 
+                    batch = get_generation_batch(batch_id) or batch
+
+                    if is_batch_cancelled(batch):
+                        mark_batch_cancelled(batch)
+                        return
+
                     update_scene(
                         batch,
                         scene["id"],
@@ -206,6 +261,11 @@ async def process_generation_batch(batch_id: str) -> None:
 
                 if step["type"] == "video":
                     fresh_batch = get_generation_batch(batch_id) or batch
+
+                    if is_batch_cancelled(fresh_batch):
+                        mark_batch_cancelled(fresh_batch)
+                        return
+
                     fresh_scene = next(
                         (
                             current_scene
@@ -221,7 +281,7 @@ async def process_generation_batch(batch_id: str) -> None:
                         or not fresh_scene.get("audioUrl")
                     ):
                         update_step(
-                            batch,
+                            fresh_batch,
                             step["id"],
                             "failed",
                             "Image and audio are required before video.",
@@ -242,6 +302,12 @@ async def process_generation_batch(batch_id: str) -> None:
                     response.raise_for_status()
                     result = response.json()
 
+                    batch = get_generation_batch(batch_id) or fresh_batch
+
+                    if is_batch_cancelled(batch):
+                        mark_batch_cancelled(batch)
+                        return
+
                     update_scene(
                         batch,
                         scene["id"],
@@ -255,11 +321,16 @@ async def process_generation_batch(batch_id: str) -> None:
                 update_step(batch, step["id"], "done")
 
             except Exception as error:
+                batch = get_generation_batch(batch_id) or batch
                 update_step(batch, step["id"], "failed", str(error))
 
     batch = get_generation_batch(batch_id)
 
     if not batch:
+        return
+
+    if is_batch_cancelled(batch):
+        mark_batch_cancelled(batch)
         return
 
     has_failed_steps = any(step["status"] == "failed" for step in batch["steps"])

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Scene } from "../types/film";
 
-type QueueStatus = "waiting" | "running" | "done" | "failed";
+type QueueStatus = "waiting" | "running" | "done" | "failed" | "cancelled";
 
 type QueueStepType = "image" | "audio" | "video";
 
@@ -20,12 +20,14 @@ interface GenerationQueueProps {
   queueSteps: QueueStep[];
   onGenerateAll: () => void;
   onClearQueue: () => void;
+  onCancelQueue: () => void;
 }
 
 function getStatusLabel(status: QueueStatus) {
   if (status === "waiting") return "Waiting";
   if (status === "running") return "Generating";
   if (status === "done") return "Done";
+  if (status === "cancelled") return "Cancelled";
   return "Failed";
 }
 
@@ -47,13 +49,20 @@ function GenerationQueue({
   queueSteps,
   onGenerateAll,
   onClearQueue,
+  onCancelQueue,
 }: GenerationQueueProps) {
   const [isOpen, setIsOpen] = useState(true);
 
   const completedSteps = queueSteps.filter((step) => step.status === "done").length;
   const failedSteps = queueSteps.filter((step) => step.status === "failed").length;
+  const cancelledSteps = queueSteps.filter(
+    (step) => step.status === "cancelled"
+  ).length;
+
   const progress =
-    queueSteps.length > 0 ? Math.round((completedSteps / queueSteps.length) * 100) : 0;
+    queueSteps.length > 0
+      ? Math.round((completedSteps / queueSteps.length) * 100)
+      : 0;
 
   return (
     <section className="card card-dark p-4 mb-5">
@@ -76,6 +85,15 @@ function GenerationQueue({
             onClick={() => setIsOpen((current) => !current)}
           >
             {isOpen ? "Hide Queue" : "Show Queue"}
+          </button>
+
+          <button
+            className="btn btn-outline-warning"
+            type="button"
+            onClick={onCancelQueue}
+            disabled={!isRunning}
+          >
+            Cancel Generation
           </button>
 
           <button
@@ -122,8 +140,10 @@ function GenerationQueue({
 
         <div className="col-md-3">
           <div className="p-3 rounded border bg-dark h-100">
-            <p className="muted-text small mb-1">Failed</p>
-            <h3 className="h5 fw-bold mb-0">{failedSteps}</h3>
+            <p className="muted-text small mb-1">Failed / Cancelled</p>
+            <h3 className="h5 fw-bold mb-0">
+              {failedSteps}/{cancelledSteps}
+            </h3>
           </div>
         </div>
       </div>
@@ -198,7 +218,9 @@ function GenerationQueue({
                           ? "text-bg-danger"
                           : step.status === "running"
                             ? "text-bg-info"
-                            : "text-bg-secondary"
+                            : step.status === "cancelled"
+                              ? "text-bg-warning"
+                              : "text-bg-secondary"
                     }`}
                   >
                     {getStatusLabel(step.status)}
