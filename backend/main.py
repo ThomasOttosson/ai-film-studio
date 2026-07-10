@@ -1,8 +1,9 @@
-from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+from contextlib import asynccontextmanager
 
-from redis_client import redis_client
+from dotenv import load_dotenv
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 from generation_queue import (
     create_generation_batch,
@@ -11,12 +12,34 @@ from generation_queue import (
     request_cancel_generation_batch,
     retry_failed_generation_batch,
 )
+from redis_client import redis_client
+from redis_events import redis_event_listener
+from websocket_manager import websocket_manager
 
 load_dotenv()
 
 from app.routes import audio, images, movie, storyboard, video
 
-app = FastAPI(title="AI Film Studio API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    redis_listener_task = asyncio.create_task(redis_event_listener())
+
+    try:
+        yield
+    finally:
+        redis_listener_task.cancel()
+
+        try:
+            await redis_listener_task
+        except asyncio.CancelledError:
+            pass
+
+
+app = FastAPI(
+    title="AI Film Studio API",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -122,3 +145,44 @@ def retry_failed_generation_queue(batch_id: str):
         "steps": batch["steps"],
         "scenes": batch["scenes"],
     }
+
+
+@app.websocket("/ws/generation-queue/{batch_id}")
+async def generation_queue_websocket(
+    websocket: WebSocket,
+    batch_id: str,
+):
+    await websocket_manager.connect(batch_id, websocket)
+
+    try:
+        batch = get_generation_batch(batch_id)
+
+        if batch:
+            await websocket.send_json(
+                {
+                    "event": "batch_snapshot",
+                    "batch": batch,
+                }
+            )
+        else:
+            await websocket.send_json(
+                {
+                    "event": "batch_not_found",
+                    "batch_id": batch_id,
+                }
+            )
+
+        while True:
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+        websocket_manager.disconnect(batch_id, websocket)
+
+    except Exception as error:
+        print(f"WebSocket error for batch {batch_id}: {error}")
+        websocket_manager.disconnect(batch_id, websocket)
+
+        try:
+            await websocket.close()
+        except Exception:
+            pass

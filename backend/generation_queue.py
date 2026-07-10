@@ -13,6 +13,7 @@ INTERNAL_API_BASE_URL = os.getenv(
 )
 
 QUEUE_LIST_KEY = "ai-film-studio:generation-jobs"
+EVENT_CHANNEL = "ai-film-studio:events"
 
 
 def now_iso() -> str:
@@ -27,6 +28,19 @@ def enqueue_generation_batch(batch_id: str) -> None:
     redis_client.rpush(
         QUEUE_LIST_KEY,
         json.dumps({"batch_id": batch_id}),
+    )
+
+
+def publish_batch_update(batch: dict[str, Any]) -> None:
+    redis_client.publish(
+        EVENT_CHANNEL,
+        json.dumps(
+            {
+                "event": "batch_updated",
+                "batch_id": batch["id"],
+                "batch": batch,
+            }
+        ),
     )
 
 
@@ -78,7 +92,7 @@ def create_generation_batch(payload: dict[str, Any]) -> dict[str, Any]:
         "scenes": scenes,
     }
 
-    redis_client.set(queue_key(batch_id), json.dumps(batch))
+    save_generation_batch(batch)
     return batch
 
 
@@ -93,7 +107,13 @@ def get_generation_batch(batch_id: str) -> dict[str, Any] | None:
 
 def save_generation_batch(batch: dict[str, Any]) -> None:
     batch["updatedAt"] = now_iso()
-    redis_client.set(queue_key(batch["id"]), json.dumps(batch))
+
+    redis_client.set(
+        queue_key(batch["id"]),
+        json.dumps(batch),
+    )
+
+    publish_batch_update(batch)
 
 
 def request_cancel_generation_batch(batch_id: str) -> dict[str, Any] | None:
@@ -146,7 +166,11 @@ def update_step(
     save_generation_batch(batch)
 
 
-def update_scene(batch: dict[str, Any], scene_id: int, updates: dict[str, Any]) -> None:
+def update_scene(
+    batch: dict[str, Any],
+    scene_id: int,
+    updates: dict[str, Any],
+) -> None:
     batch["scenes"] = [
         {
             **scene,
@@ -198,7 +222,12 @@ async def process_generation_batch(batch_id: str) -> None:
             )
 
             if not scene:
-                update_step(batch, step["id"], "failed", "Scene not found.")
+                update_step(
+                    batch,
+                    step["id"],
+                    "failed",
+                    "Scene not found.",
+                )
                 continue
 
             try:
@@ -231,7 +260,7 @@ async def process_generation_batch(batch_id: str) -> None:
                         },
                     )
 
-                if step["type"] == "audio":
+                elif step["type"] == "audio":
                     response = await client.post(
                         f"{INTERNAL_API_BASE_URL}/api/generate-audio",
                         json={
@@ -259,7 +288,7 @@ async def process_generation_batch(batch_id: str) -> None:
                         },
                     )
 
-                if step["type"] == "video":
+                elif step["type"] == "video":
                     fresh_batch = get_generation_batch(batch_id) or batch
 
                     if is_batch_cancelled(fresh_batch):
@@ -322,7 +351,12 @@ async def process_generation_batch(batch_id: str) -> None:
 
             except Exception as error:
                 batch = get_generation_batch(batch_id) or batch
-                update_step(batch, step["id"], "failed", str(error))
+                update_step(
+                    batch,
+                    step["id"],
+                    "failed",
+                    str(error),
+                )
 
     batch = get_generation_batch(batch_id)
 
@@ -333,12 +367,23 @@ async def process_generation_batch(batch_id: str) -> None:
         mark_batch_cancelled(batch)
         return
 
-    has_failed_steps = any(step["status"] == "failed" for step in batch["steps"])
-    batch["status"] = "completed_with_errors" if has_failed_steps else "completed"
+    has_failed_steps = any(
+        step["status"] == "failed"
+        for step in batch["steps"]
+    )
+
+    batch["status"] = (
+        "completed_with_errors"
+        if has_failed_steps
+        else "completed"
+    )
+
     save_generation_batch(batch)
 
 
-def retry_failed_generation_batch(batch_id: str) -> dict[str, Any] | None:
+def retry_failed_generation_batch(
+    batch_id: str,
+) -> dict[str, Any] | None:
     batch = get_generation_batch(batch_id)
 
     if not batch:

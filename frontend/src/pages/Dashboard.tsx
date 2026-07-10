@@ -11,7 +11,12 @@ import {
   getGenerationQueue,
   retryFailedGenerationQueue,
   startGenerationQueue,
+  type GenerationQueueResponse,
 } from "../api/generationQueueApi";
+import {
+  connectGenerationQueueSocket,
+  type GenerationQueueSocketMessage,
+} from "../api/generationQueueSocket";
 import AppMenuBar from "../components/AppMenuBar";
 import FinalMovie from "../components/FinalMovie";
 import GenerationQueue, {
@@ -49,43 +54,71 @@ function getSceneSeconds(scene: Scene, fallbackSceneLength: number) {
   return fallbackSceneLength;
 }
 
+function isTerminalQueueStatus(status: string) {
+  return [
+    "completed",
+    "completed_with_errors",
+    "failed",
+    "cancelled",
+    "not_found",
+  ].includes(status);
+}
+
 function Dashboard() {
   const initialProject = useMemo(() => getInitialProject(), []);
-  const queuePollingIntervalRef = useRef<number | null>(null);
+
+  const queueSocketRef = useRef<ReturnType<
+    typeof connectGenerationQueueSocket
+  > | null>(null);
+
+  const queueReconnectTimeoutRef = useRef<number | null>(null);
+  const queuePingIntervalRef = useRef<number | null>(null);
 
   const [projects, setProjects] = useState<StoredProject[]>(() =>
     getStoredProjects()
   );
-  const [activeProjectId, setActiveProjectIdState] = useState(initialProject.id);
 
-  const [movieTitle, setMovieTitle] = useState(initialProject.data.movieTitle);
+  const [activeProjectId, setActiveProjectIdState] = useState(
+    initialProject.id
+  );
+
+  const [movieTitle, setMovieTitle] = useState(
+    initialProject.data.movieTitle
+  );
+
   const [movieIdea, setMovieIdea] = useState(initialProject.data.movieIdea);
   const [scenes, setScenes] = useState<Scene[]>(initialProject.data.scenes);
   const [isLoading, setIsLoading] = useState(false);
 
   const [style, setStyle] = useState(initialProject.data.style);
+
   const [sceneLength, setSceneLength] = useState(
     initialProject.data.sceneLength
   );
+
   const [aspectRatio, setAspectRatio] = useState(
     initialProject.data.aspectRatio
   );
 
   const [generatingImageSceneId, setGeneratingImageSceneId] =
     useState<number | null>(null);
+
   const [generatingAudioSceneId, setGeneratingAudioSceneId] =
     useState<number | null>(null);
+
   const [generatingVideoSceneId, setGeneratingVideoSceneId] =
     useState<number | null>(null);
 
   const [queueSteps, setQueueSteps] = useState<QueueStep[]>([]);
   const [isRunningQueue, setIsRunningQueue] = useState(false);
   const [isCancellingQueue, setIsCancellingQueue] = useState(false);
+
   const [activeQueueBatchId, setActiveQueueBatchId] = useState<string | null>(
     null
   );
 
   const [isGeneratingFullMovie, setIsGeneratingFullMovie] = useState(false);
+
   const [finalMovieUrl, setFinalMovieUrl] = useState(
     initialProject.data.finalMovieUrl
   );
@@ -100,25 +133,82 @@ function Dashboard() {
     finalMovieUrl,
   };
 
-  function stopQueuePolling() {
-    if (queuePollingIntervalRef.current !== null) {
-      window.clearInterval(queuePollingIntervalRef.current);
-      queuePollingIntervalRef.current = null;
+  function clearQueueReconnectTimeout() {
+    if (queueReconnectTimeoutRef.current !== null) {
+      window.clearTimeout(queueReconnectTimeoutRef.current);
+      queueReconnectTimeoutRef.current = null;
     }
   }
 
+  function clearQueuePingInterval() {
+    if (queuePingIntervalRef.current !== null) {
+      window.clearInterval(queuePingIntervalRef.current);
+      queuePingIntervalRef.current = null;
+    }
+  }
+
+  function closeQueueSocket() {
+    clearQueueReconnectTimeout();
+    clearQueuePingInterval();
+
+    queueSocketRef.current?.close();
+    queueSocketRef.current = null;
+  }
+
+  function resetQueueConnection() {
+    closeQueueSocket();
+    setIsRunningQueue(false);
+    setIsCancellingQueue(false);
+  }
+
+  function applyQueueResponse(queue: GenerationQueueResponse) {
+    setQueueSteps(queue.steps ?? []);
+
+    if (queue.scenes?.length > 0) {
+      setScenes(queue.scenes);
+    }
+
+    if (isTerminalQueueStatus(queue.status)) {
+      setIsRunningQueue(false);
+      setIsCancellingQueue(false);
+    }
+  }
+
+  /*
+   * Keep exactly one WebSocket connection open for the active queue.
+   *
+   * This effect intentionally depends only on:
+   * - activeQueueBatchId
+   * - isRunningQueue
+   *
+   * It must not depend on scenes or queueSteps because those values change
+   * for every WebSocket message and would repeatedly close the connection.
+   */
   useEffect(() => {
-    return () => {
-      stopQueuePolling();
-    };
-  }, []);
+    if (!activeQueueBatchId || !isRunningQueue) {
+      closeQueueSocket();
+      return;
+    }
 
-  function startPollingQueue(batchId: string, logPrefix = "generation queue") {
-    stopQueuePolling();
+    const batchId = activeQueueBatchId;
+    let effectDisposed = false;
+    let reconnectAttempts = 0;
 
-    queuePollingIntervalRef.current = window.setInterval(async () => {
+    function cleanupCurrentConnection() {
+      clearQueueReconnectTimeout();
+      clearQueuePingInterval();
+
+      queueSocketRef.current?.close();
+      queueSocketRef.current = null;
+    }
+
+    async function recoverQueueSnapshot() {
       try {
         const queue = await getGenerationQueue(batchId);
+
+        if (effectDisposed) {
+          return false;
+        }
 
         setQueueSteps(queue.steps ?? []);
 
@@ -126,28 +216,139 @@ function Dashboard() {
           setScenes(queue.scenes);
         }
 
-        if (
-          queue.status === "completed" ||
-          queue.status === "completed_with_errors" ||
-          queue.status === "failed" ||
-          queue.status === "cancelled" ||
-          queue.status === "not_found"
-        ) {
-          stopQueuePolling();
+        if (isTerminalQueueStatus(queue.status)) {
           setIsRunningQueue(false);
           setIsCancellingQueue(false);
+          return false;
         }
+
+        return true;
       } catch (error) {
-        console.error(`Failed to poll ${logPrefix}:`, error);
-        stopQueuePolling();
+        console.error("Failed to recover queue snapshot:", error);
+        return true;
+      }
+    }
+
+    function scheduleReconnect() {
+      if (effectDisposed) {
+        return;
+      }
+
+      clearQueueReconnectTimeout();
+
+      const reconnectDelay = Math.min(
+        1_000 * 2 ** reconnectAttempts,
+        10_000
+      );
+
+      reconnectAttempts += 1;
+
+      queueReconnectTimeoutRef.current = window.setTimeout(async () => {
+        if (effectDisposed) {
+          return;
+        }
+
+        const queueStillRunning = await recoverQueueSnapshot();
+
+        if (!effectDisposed && queueStillRunning) {
+          openSocket();
+        }
+      }, reconnectDelay);
+    }
+
+    function handleSocketMessage(message: GenerationQueueSocketMessage) {
+      if (effectDisposed) {
+        return;
+      }
+
+      if (message.event === "batch_not_found") {
+        setQueueSteps([]);
+        setIsRunningQueue(false);
+        setIsCancellingQueue(false);
+        return;
+      }
+
+      const batch = message.batch;
+
+      if (!batch) {
+        return;
+      }
+
+      setQueueSteps(batch.steps ?? []);
+
+      if (batch.scenes?.length > 0) {
+        setScenes(batch.scenes);
+      }
+
+      if (isTerminalQueueStatus(batch.status)) {
         setIsRunningQueue(false);
         setIsCancellingQueue(false);
       }
-    }, 2000);
-  }
+    }
+
+    function openSocket() {
+      if (effectDisposed) {
+        return;
+      }
+
+      cleanupCurrentConnection();
+
+      const connection = connectGenerationQueueSocket({
+        batchId,
+
+        onOpen: () => {
+          if (effectDisposed) {
+            return;
+          }
+
+          console.log(`Generation WebSocket connected: ${batchId}`);
+
+          reconnectAttempts = 0;
+          clearQueueReconnectTimeout();
+          clearQueuePingInterval();
+
+          queuePingIntervalRef.current = window.setInterval(() => {
+            queueSocketRef.current?.sendPing();
+          }, 25_000);
+        },
+
+        onMessage: handleSocketMessage,
+
+        onError: (event) => {
+          if (effectDisposed) {
+            return;
+          }
+
+          console.error("Generation WebSocket error:", event);
+        },
+
+        onClose: () => {
+          clearQueuePingInterval();
+
+          if (effectDisposed) {
+            return;
+          }
+
+          console.log(`Generation WebSocket closed: ${batchId}`);
+          queueSocketRef.current = null;
+
+          scheduleReconnect();
+        },
+      });
+
+      queueSocketRef.current = connection;
+    }
+
+    openSocket();
+
+    return () => {
+      effectDisposed = true;
+      cleanupCurrentConnection();
+    };
+  }, [activeQueueBatchId, isRunningQueue]);
 
   function loadProjectIntoEditor(project: StoredProject) {
-    stopQueuePolling();
+    closeQueueSocket();
 
     setActiveProjectId(project.id);
     setActiveProjectIdState(project.id);
@@ -164,6 +365,7 @@ function Dashboard() {
     setGeneratingAudioSceneId(null);
     setGeneratingVideoSceneId(null);
     setIsGeneratingFullMovie(false);
+
     setIsRunningQueue(false);
     setIsCancellingQueue(false);
     setQueueSteps([]);
@@ -191,9 +393,11 @@ function Dashboard() {
   ]);
 
   function handleClearQueue() {
-    if (isRunningQueue) return;
+    if (isRunningQueue) {
+      return;
+    }
 
-    stopQueuePolling();
+    closeQueueSocket();
     setQueueSteps([]);
     setIsCancellingQueue(false);
     setActiveQueueBatchId(null);
@@ -201,6 +405,7 @@ function Dashboard() {
 
   function handleCreateProject() {
     const project = createAndSaveProject("Untitled Project");
+
     setProjects(getStoredProjects());
     loadProjectIntoEditor(project);
   }
@@ -210,7 +415,9 @@ function Dashboard() {
       (storedProject) => storedProject.id === projectId
     );
 
-    if (!project) return;
+    if (!project) {
+      return;
+    }
 
     loadProjectIntoEditor(project);
   }
@@ -218,7 +425,9 @@ function Dashboard() {
   function handleDuplicateProject(projectId: string) {
     const duplicatedProject = duplicateStoredProject(projectId);
 
-    if (!duplicatedProject) return;
+    if (!duplicatedProject) {
+      return;
+    }
 
     setProjects(getStoredProjects());
     loadProjectIntoEditor(duplicatedProject);
@@ -229,12 +438,17 @@ function Dashboard() {
       "Are you sure you want to delete this project?"
     );
 
-    if (!shouldDelete) return;
+    if (!shouldDelete) {
+      return;
+    }
 
     const remainingProjects = deleteStoredProject(projectId);
+
     setProjects(remainingProjects);
 
-    if (projectId !== activeProjectId) return;
+    if (projectId !== activeProjectId) {
+      return;
+    }
 
     if (remainingProjects[0]) {
       loadProjectIntoEditor(remainingProjects[0]);
@@ -242,6 +456,7 @@ function Dashboard() {
     }
 
     const newProject = createAndSaveProject("Untitled Project");
+
     setProjects(getStoredProjects());
     loadProjectIntoEditor(newProject);
   }
@@ -251,9 +466,11 @@ function Dashboard() {
       "Are you sure you want to clear the current project?"
     );
 
-    if (!shouldClear) return;
+    if (!shouldClear) {
+      return;
+    }
 
-    stopQueuePolling();
+    closeQueueSocket();
 
     setMovieTitle(defaultProjectData.movieTitle);
     setMovieIdea(defaultProjectData.movieIdea);
@@ -262,6 +479,7 @@ function Dashboard() {
     setSceneLength(defaultProjectData.sceneLength);
     setAspectRatio(defaultProjectData.aspectRatio);
     setFinalMovieUrl(defaultProjectData.finalMovieUrl);
+
     setQueueSteps([]);
     setIsRunningQueue(false);
     setIsCancellingQueue(false);
@@ -270,7 +488,7 @@ function Dashboard() {
 
   async function handleGenerateStoryboard() {
     try {
-      stopQueuePolling();
+      closeQueueSocket();
       setIsLoading(true);
 
       const generatedScenes = await generateStoryboard({
@@ -296,7 +514,10 @@ function Dashboard() {
       setFinalMovieUrl("");
     } catch (error) {
       console.error("Failed to generate storyboard:", error);
-      alert("Could not generate storyboard. Make sure the backend is running.");
+
+      alert(
+        "Could not generate storyboard. Make sure the backend is running."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -402,27 +623,16 @@ function Dashboard() {
   }
 
   async function handleCancelQueue() {
-    if (!activeQueueBatchId || isCancellingQueue) return;
+    if (!activeQueueBatchId || isCancellingQueue) {
+      return;
+    }
 
     try {
       setIsCancellingQueue(true);
 
       const cancelledQueue = await cancelGenerationQueue(activeQueueBatchId);
 
-      setQueueSteps(cancelledQueue.steps ?? []);
-
-      if (cancelledQueue.scenes?.length > 0) {
-        setScenes(cancelledQueue.scenes);
-      }
-
-      if (
-        cancelledQueue.status === "cancelled" ||
-        cancelledQueue.status === "not_found"
-      ) {
-        stopQueuePolling();
-        setIsRunningQueue(false);
-        setIsCancellingQueue(false);
-      }
+      applyQueueResponse(cancelledQueue);
     } catch (error) {
       console.error("Failed to cancel queue:", error);
       alert("Could not cancel generation queue.");
@@ -431,14 +641,16 @@ function Dashboard() {
   }
 
   async function handleRetryFailedQueue() {
-    if (!activeQueueBatchId || isRunningQueue) return;
+    if (!activeQueueBatchId || isRunningQueue) {
+      return;
+    }
 
     try {
-      stopQueuePolling();
-      setIsRunningQueue(true);
-      setIsCancellingQueue(false);
+      closeQueueSocket();
 
-      const retriedQueue = await retryFailedGenerationQueue(activeQueueBatchId);
+      const retriedQueue = await retryFailedGenerationQueue(
+        activeQueueBatchId
+      );
 
       setQueueSteps(retriedQueue.steps ?? []);
 
@@ -446,22 +658,29 @@ function Dashboard() {
         setScenes(retriedQueue.scenes);
       }
 
-      startPollingQueue(activeQueueBatchId, "retried generation queue");
+      if (isTerminalQueueStatus(retriedQueue.status)) {
+        setIsRunningQueue(false);
+        setIsCancellingQueue(false);
+        return;
+      }
+
+      setIsCancellingQueue(false);
+      setIsRunningQueue(true);
     } catch (error) {
       console.error("Failed to retry failed queue:", error);
       alert("Could not retry failed generation steps.");
-      stopQueuePolling();
-      setIsRunningQueue(false);
-      setIsCancellingQueue(false);
+
+      resetQueueConnection();
     }
   }
 
   async function handleGenerateAllMedia() {
-    if (scenes.length === 0 || isRunningQueue) return;
+    if (scenes.length === 0 || isRunningQueue) {
+      return;
+    }
 
     try {
-      stopQueuePolling();
-      setIsRunningQueue(true);
+      closeQueueSocket();
       setIsCancellingQueue(false);
 
       const startedQueue = await startGenerationQueue({
@@ -479,14 +698,15 @@ function Dashboard() {
 
       setActiveQueueBatchId(batchId);
       setQueueSteps(startedQueue.steps ?? []);
-
-      startPollingQueue(batchId);
+      setIsRunningQueue(true);
     } catch (error) {
       console.error("Failed to start generation queue:", error);
-      alert("Could not start generation queue. Check your backend terminal.");
-      stopQueuePolling();
-      setIsRunningQueue(false);
-      setIsCancellingQueue(false);
+
+      alert(
+        "Could not start generation queue. Check your backend terminal."
+      );
+
+      resetQueueConnection();
       setActiveQueueBatchId(null);
     }
   }
@@ -497,7 +717,10 @@ function Dashboard() {
       .filter((url): url is string => Boolean(url));
 
     if (videoUrls.length === 0) {
-      alert("Generate at least one scene video before creating the final movie.");
+      alert(
+        "Generate at least one scene video before creating the final movie."
+      );
+
       return;
     }
 
@@ -512,6 +735,7 @@ function Dashboard() {
       setFinalMovieUrl(result.final_movie_url);
     } catch (error) {
       console.error("Failed to generate full movie:", error);
+
       alert("Could not generate full movie. Check your backend terminal.");
     } finally {
       setIsGeneratingFullMovie(false);
@@ -564,7 +788,10 @@ function Dashboard() {
 
         {isLoading && (
           <div className="card card-dark p-4 mb-5 text-center">
-            <h2 className="h4 fw-bold mb-2">Generating storyboard...</h2>
+            <h2 className="h4 fw-bold mb-2">
+              Generating storyboard...
+            </h2>
+
             <p className="muted-text">
               AI Film Studio is creating your first scene structure.
             </p>
@@ -595,9 +822,15 @@ function Dashboard() {
                     onGenerateImage={handleGenerateImage}
                     onGenerateAudio={handleGenerateAudio}
                     onGenerateVideo={handleGenerateVideo}
-                    isGeneratingImage={generatingImageSceneId === scene.id}
-                    isGeneratingAudio={generatingAudioSceneId === scene.id}
-                    isGeneratingVideo={generatingVideoSceneId === scene.id}
+                    isGeneratingImage={
+                      generatingImageSceneId === scene.id
+                    }
+                    isGeneratingAudio={
+                      generatingAudioSceneId === scene.id
+                    }
+                    isGeneratingVideo={
+                      generatingVideoSceneId === scene.id
+                    }
                   />
                 ))}
               </div>
@@ -611,12 +844,14 @@ function Dashboard() {
 
             <section className="card card-dark p-4 mt-5">
               <h2 className="h4 fw-bold mb-3">Export Movie</h2>
+
               <p className="muted-text mb-3">
                 Combine all generated scene videos into one final movie.
               </p>
 
               <button
                 className="btn btn-gradient"
+                type="button"
                 onClick={handleGenerateFullMovie}
                 disabled={isGeneratingFullMovie}
               >
@@ -626,7 +861,9 @@ function Dashboard() {
               </button>
             </section>
 
-            {finalMovieUrl && <FinalMovie finalMovieUrl={finalMovieUrl} />}
+            {finalMovieUrl && (
+              <FinalMovie finalMovieUrl={finalMovieUrl} />
+            )}
           </>
         )}
       </main>
