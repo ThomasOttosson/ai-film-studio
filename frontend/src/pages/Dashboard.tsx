@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   generateFullMovie,
   generateSceneAudio,
@@ -32,17 +32,19 @@ import SceneCard from "../components/SceneCard";
 import VideoEditor from "../components/VideoEditor";
 import type { Scene } from "../types/film";
 import {
-  createAndSaveProject,
   defaultProjectData,
-  deleteStoredProject,
-  duplicateStoredProject,
-  getInitialProject,
-  getStoredProjects,
+  getActiveProjectId,
   setActiveProjectId,
-  updateStoredProject,
   type SavedProjectData,
   type StoredProject,
 } from "../utils/projectStorage";
+import {
+  createProject,
+  deleteProject,
+  duplicateProject,
+  listProjects,
+  updateProject,
+} from "../api/projectApi";
 
 function getSceneSeconds(scene: Scene, fallbackSceneLength: number) {
   const parsedSeconds = Number(String(scene.duration).replace(/[^0-9.]/g, ""));
@@ -65,8 +67,16 @@ function isTerminalQueueStatus(status: string) {
 }
 
 function Dashboard() {
-  const initialProject = useMemo(() => getInitialProject(), []);
+  const initialProject: StoredProject = {
+    id: "",
+    name: "Untitled Project",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    data: defaultProjectData,
+  };
 
+  const projectsLoadedRef = useRef(false);
+  const saveTimeoutRef = useRef<number | null>(null);
   const queueSocketRef = useRef<ReturnType<
     typeof connectGenerationQueueSocket
   > | null>(null);
@@ -74,13 +84,9 @@ function Dashboard() {
   const queueReconnectTimeoutRef = useRef<number | null>(null);
   const queuePingIntervalRef = useRef<number | null>(null);
 
-  const [projects, setProjects] = useState<StoredProject[]>(() =>
-    getStoredProjects()
-  );
-
-  const [activeProjectId, setActiveProjectIdState] = useState(
-    initialProject.id
-  );
+  const [projects, setProjects] = useState<StoredProject[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [activeProjectId, setActiveProjectIdState] = useState("");
 
   const [movieTitle, setMovieTitle] = useState(
     initialProject.data.movieTitle
@@ -373,14 +379,79 @@ function Dashboard() {
   }
 
   useEffect(() => {
-    const updatedProject = updateStoredProject(
-      activeProjectId,
-      currentProjectData
-    );
+    let cancelled = false;
 
-    if (updatedProject) {
-      setProjects(getStoredProjects());
+    async function loadProjects() {
+      try {
+        setIsLoadingProjects(true);
+        let serverProjects = await listProjects();
+
+        if (serverProjects.length === 0) {
+          const firstProject = await createProject(defaultProjectData);
+          serverProjects = [firstProject];
+        }
+
+        if (cancelled) return;
+
+        setProjects(serverProjects);
+
+        const rememberedProjectId = getActiveProjectId();
+        const projectToOpen =
+          serverProjects.find((project) => project.id === rememberedProjectId) ??
+          serverProjects[0];
+
+        loadProjectIntoEditor(projectToOpen);
+        projectsLoadedRef.current = true;
+      } catch (error) {
+        console.error("Failed to load projects:", error);
+        alert("Could not load your projects from the server.");
+      } finally {
+        if (!cancelled) setIsLoadingProjects(false);
+      }
     }
+
+    void loadProjects();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!projectsLoadedRef.current || !activeProjectId) return;
+
+    if (saveTimeoutRef.current !== null) {
+      window.clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = window.setTimeout(async () => {
+      try {
+        const savedProject = await updateProject(
+          activeProjectId,
+          currentProjectData
+        );
+
+        setProjects((currentProjects) =>
+          currentProjects
+            .map((project) =>
+              project.id === savedProject.id ? savedProject : project
+            )
+            .sort(
+              (a, b) =>
+                new Date(b.updatedAt).getTime() -
+                new Date(a.updatedAt).getTime()
+            )
+        );
+      } catch (error) {
+        console.error("Failed to save project:", error);
+      }
+    }, 700);
+
+    return () => {
+      if (saveTimeoutRef.current !== null) {
+        window.clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, [
     activeProjectId,
     movieTitle,
@@ -403,62 +474,63 @@ function Dashboard() {
     setActiveQueueBatchId(null);
   }
 
-  function handleCreateProject() {
-    const project = createAndSaveProject("Untitled Project");
-
-    setProjects(getStoredProjects());
-    loadProjectIntoEditor(project);
+  async function handleCreateProject() {
+    try {
+      const project = await createProject(defaultProjectData);
+      setProjects((currentProjects) => [project, ...currentProjects]);
+      loadProjectIntoEditor(project);
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      alert("Could not create a new project.");
+    }
   }
 
   function handleOpenProject(projectId: string) {
-    const project = getStoredProjects().find(
+    const project = projects.find(
       (storedProject) => storedProject.id === projectId
     );
 
-    if (!project) {
-      return;
-    }
-
-    loadProjectIntoEditor(project);
+    if (project) loadProjectIntoEditor(project);
   }
 
-  function handleDuplicateProject(projectId: string) {
-    const duplicatedProject = duplicateStoredProject(projectId);
-
-    if (!duplicatedProject) {
-      return;
+  async function handleDuplicateProject(projectId: string) {
+    try {
+      const duplicated = await duplicateProject(projectId);
+      setProjects((currentProjects) => [duplicated, ...currentProjects]);
+      loadProjectIntoEditor(duplicated);
+    } catch (error) {
+      console.error("Failed to duplicate project:", error);
+      alert("Could not duplicate the project.");
     }
-
-    setProjects(getStoredProjects());
-    loadProjectIntoEditor(duplicatedProject);
   }
 
-  function handleDeleteProject(projectId: string) {
+  async function handleDeleteProject(projectId: string) {
     const shouldDelete = window.confirm(
       "Are you sure you want to delete this project?"
     );
 
-    if (!shouldDelete) {
-      return;
+    if (!shouldDelete) return;
+
+    try {
+      await deleteProject(projectId);
+      let remainingProjects = projects.filter(
+        (project) => project.id !== projectId
+      );
+
+      if (remainingProjects.length === 0) {
+        const replacement = await createProject(defaultProjectData);
+        remainingProjects = [replacement];
+      }
+
+      setProjects(remainingProjects);
+
+      if (projectId === activeProjectId) {
+        loadProjectIntoEditor(remainingProjects[0]);
+      }
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+      alert("Could not delete the project.");
     }
-
-    const remainingProjects = deleteStoredProject(projectId);
-
-    setProjects(remainingProjects);
-
-    if (projectId !== activeProjectId) {
-      return;
-    }
-
-    if (remainingProjects[0]) {
-      loadProjectIntoEditor(remainingProjects[0]);
-      return;
-    }
-
-    const newProject = createAndSaveProject("Untitled Project");
-
-    setProjects(getStoredProjects());
-    loadProjectIntoEditor(newProject);
   }
 
   function handleClearCurrentProject() {
@@ -740,6 +812,17 @@ function Dashboard() {
     } finally {
       setIsGeneratingFullMovie(false);
     }
+  }
+
+  if (isLoadingProjects) {
+    return (
+      <main className="container py-5">
+        <div className="card card-dark p-5 text-center">
+          <h1 className="h4 fw-bold mb-2">Loading your projects...</h1>
+          <p className="muted-text mb-0">Fetching your workspace from PostgreSQL.</p>
+        </div>
+      </main>
+    );
   }
 
   return (

@@ -57,8 +57,8 @@ function ProjectManager({
           </span>
           <h2 className="h3 fw-bold mt-2 mb-2">My Film Projects</h2>
           <p className="muted-text mb-0">
-            Create, open, duplicate and delete local projects. Everything is
-            stored in your browser for now.
+            Create, open, duplicate and delete your projects. Everything is
+            securely stored in your account.
           </p>
         </div>
 
@@ -102,7 +102,7 @@ function ProjectManager({
         <div className="p-4 rounded border bg-dark text-center">
           <h3 className="h5 fw-bold mb-2">No projects yet</h3>
           <p className="muted-text mb-3">
-            Create your first movie project to start saving work locally.
+            Create your first movie project to start saving work to your account.
           </p>
 
           <button
