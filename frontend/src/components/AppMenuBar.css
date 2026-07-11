@@ -1,81 +1,223 @@
-.app-menu-bar{
-
-height:42px;
-
-display:flex;
-
-justify-content:space-between;
-
-align-items:center;
-
-padding:0 18px;
-
-background:#181818;
-
-border-bottom:1px solid #2d2d2d;
-
-position:sticky;
-
-top:0;
-
-z-index:999;
-
+.app-menu-bar {
+  height: 42px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 18px;
+  background: #181818;
+  border-bottom: 1px solid #2d2d2d;
+  position: sticky;
+  top: 0;
+  z-index: 999;
 }
 
-.app-menu-left{
-
-display:flex;
-
-align-items:center;
-
-gap:4px;
-
+.app-menu-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.app-logo{
-
-margin-right:24px;
-
-font-weight:700;
-
-font-size:.95rem;
-
-color:white;
-
+.app-logo {
+  margin-right: 24px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: white;
 }
 
-.app-menu-left button{
-
-background:none;
-
-border:none;
-
-color:#cfcfcf;
-
-padding:6px 10px;
-
-border-radius:4px;
-
-font-size:.9rem;
-
-transition:.15s;
-
-cursor:pointer;
-
+.app-menu-left button {
+  background: none;
+  border: none;
+  color: #cfcfcf;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: 0.15s;
+  cursor: pointer;
 }
 
-.app-menu-left button:hover{
-
-background:#2f2f2f;
-
-color:white;
-
+.app-menu-left button:hover {
+  background: #2f2f2f;
+  color: white;
 }
 
-.app-menu-right{
+.app-menu-right {
+  color: #8e8e8e;
+  font-size: 0.82rem;
+}
 
-color:#8e8e8e;
+.app-menu-dropdown {
+  position: relative;
+}
 
-font-size:.82rem;
+.app-menu-dropdown-content {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  min-width: 190px;
+  padding: 6px;
+  background: #202020;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  z-index: 1200;
+}
 
+.app-menu-dropdown-content button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.share-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.share-dialog {
+  width: min(480px, 100%);
+  padding: 24px;
+  background: #202020;
+  color: #ffffff;
+  border: 1px solid #3a3a3a;
+  border-radius: 10px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+}
+
+.share-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.share-dialog-header h2 {
+  margin: 0 0 6px;
+  font-size: 1.35rem;
+}
+
+.share-dialog-header p {
+  margin: 0;
+  color: #a8a8a8;
+  font-size: 0.9rem;
+}
+
+.share-dialog-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  color: #ffffff;
+  background: transparent;
+  border: 1px solid #555555;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.share-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.share-dialog-field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.share-dialog-field input,
+.share-dialog-field select {
+  width: 100%;
+  padding: 10px 12px;
+  color: #ffffff;
+  background: #151515;
+  border: 1px solid #494949;
+  border-radius: 6px;
+}
+
+.share-dialog-field input:focus,
+.share-dialog-field select:focus {
+  outline: none;
+  border-color: #7c7cff;
+  box-shadow: 0 0 0 2px rgba(124, 124, 255, 0.18);
+}
+
+.share-dialog-field input:disabled,
+.share-dialog-field select:disabled {
+  color: #8f8f8f;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.share-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.share-dialog-actions button {
+  padding: 8px 16px;
+  color: #ffffff;
+  background: transparent;
+  border: 1px solid #555555;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.share-dialog-actions button:hover,
+.share-dialog-close:hover {
+  background: #303030;
+}
+
+@media (max-width: 768px) {
+  .app-menu-bar {
+    padding: 0 10px;
+  }
+
+  .app-logo {
+    margin-right: 10px;
+    font-size: 0.85rem;
+  }
+
+  .app-menu-left {
+    gap: 1px;
+  }
+
+  .app-menu-left button {
+    padding: 6px 7px;
+    font-size: 0.82rem;
+  }
+
+  .app-menu-right {
+    display: none;
+  }
+}
+.app-menu-dropdown summary {
+  list-style: none;
+  color: #cfcfcf;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.app-menu-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-menu-dropdown summary:hover,
+.app-menu-dropdown[open] summary {
+  background: #2f2f2f;
+  color: #ffffff;
 }
