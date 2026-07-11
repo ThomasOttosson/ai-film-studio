@@ -1,8 +1,6 @@
 import type { QueueStep } from "../components/GenerationQueue";
 import type { Scene } from "../types/film";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+import apiClient from "./client";
 
 export interface StartGenerationQueuePayload {
   scenes: Scene[];
@@ -22,60 +20,41 @@ export interface GenerationQueueResponse {
 
 export async function startGenerationQueue(
   payload: StartGenerationQueuePayload
-) {
-  const response = await fetch(`${API_BASE_URL}/api/generation-queue`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to start generation queue");
-  }
-
-  return response.json() as Promise<GenerationQueueResponse>;
-}
-
-export async function getGenerationQueue(batchId: string) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/generation-queue/${batchId}`
+): Promise<GenerationQueueResponse> {
+  const response = await apiClient.post<GenerationQueueResponse>(
+    "/api/generation-queue",
+    payload
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch generation queue");
-  }
-
-  return response.json() as Promise<GenerationQueueResponse>;
+  return response.data;
 }
 
-export async function cancelGenerationQueue(batchId: string) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/generation-queue/${batchId}/cancel`,
-    {
-      method: "POST",
-    }
+export async function getGenerationQueue(
+  batchId: string
+): Promise<GenerationQueueResponse> {
+  const response = await apiClient.get<GenerationQueueResponse>(
+    `/api/generation-queue/${batchId}`
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to cancel generation queue");
-  }
-
-  return response.json() as Promise<GenerationQueueResponse>;
+  return response.data;
 }
 
-export async function retryFailedGenerationQueue(batchId: string) {
-  const response = await fetch(
-    `${API_BASE_URL}/api/generation-queue/${batchId}/retry-failed`,
-    {
-      method: "POST",
-    }
+export async function cancelGenerationQueue(
+  batchId: string
+): Promise<GenerationQueueResponse> {
+  const response = await apiClient.post<GenerationQueueResponse>(
+    `/api/generation-queue/${batchId}/cancel`
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to retry failed generation queue");
-  }
+  return response.data;
+}
 
-  return response.json() as Promise<GenerationQueueResponse>;
+export async function retryFailedGenerationQueue(
+  batchId: string
+): Promise<GenerationQueueResponse> {
+  const response = await apiClient.post<GenerationQueueResponse>(
+    `/api/generation-queue/${batchId}/retry-failed`
+  );
+
+  return response.data;
 }

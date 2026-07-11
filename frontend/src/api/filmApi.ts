@@ -1,12 +1,5 @@
-import axios from "axios";
+import apiClient from "./client";
 import type { Scene } from "../types/film";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-});
 
 export interface StoryboardRequest {
   title: string;
@@ -56,7 +49,7 @@ export interface VideoResponse {
 export async function generateSceneVideo(
   data: VideoRequest
 ): Promise<VideoResponse> {
-  const response = await api.post<VideoResponse>(
+  const response = await apiClient.post<VideoResponse>(
     "/api/generate-video",
     data
   );
@@ -67,7 +60,7 @@ export async function generateSceneVideo(
 export async function generateSceneAudio(
   data: AudioRequest
 ): Promise<AudioResponse> {
-  const response = await api.post<AudioResponse>(
+  const response = await apiClient.post<AudioResponse>(
     "/api/generate-audio",
     data
   );
@@ -78,7 +71,7 @@ export async function generateSceneAudio(
 export async function generateStoryboard(
   data: StoryboardRequest
 ): Promise<Scene[]> {
-  const response = await api.post<Scene[]>(
+  const response = await apiClient.post<Scene[]>(
     "/api/storyboard",
     data
   );
@@ -89,7 +82,7 @@ export async function generateStoryboard(
 export async function generateSceneImage(
   data: ImageRequest
 ): Promise<ImageResponse> {
-  const response = await api.post<ImageResponse>(
+  const response = await apiClient.post<ImageResponse>(
     "/api/generate-image",
     data
   );
@@ -110,7 +103,7 @@ export interface FullMovieResponse {
 export async function generateFullMovie(
   data: FullMovieRequest
 ): Promise<FullMovieResponse> {
-  const response = await api.post<FullMovieResponse>(
+  const response = await apiClient.post<FullMovieResponse>(
     "/api/generate-full-movie",
     data
   );
@@ -118,4 +111,4 @@ export async function generateFullMovie(
   return response.data;
 }
 
-export default api;
+export default apiClient;

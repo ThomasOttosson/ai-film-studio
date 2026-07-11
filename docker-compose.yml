@@ -1,10 +1,37 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ai-film-studio-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_film_studio
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d ai_film_studio"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   redis:
     image: redis:7-alpine
     container_name: ai-film-studio-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
@@ -18,11 +45,15 @@ services:
       - ./backend/.env
     environment:
       REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/ai_film_studio
       INTERNAL_API_BASE_URL: http://backend:8000
     volumes:
       - ./backend:/app
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   worker:
@@ -35,12 +66,17 @@ services:
       - ./backend/.env
     environment:
       REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/ai_film_studio
       INTERNAL_API_BASE_URL: http://backend:8000
     volumes:
       - ./backend:/app
     depends_on:
-      - redis
-      - backend
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
     command: python worker.py
 
   frontend:
@@ -61,3 +97,6 @@ services:
     depends_on:
       - backend
     command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  postgres_data:

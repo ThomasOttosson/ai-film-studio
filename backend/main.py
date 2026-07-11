@@ -2,9 +2,11 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.auth import get_current_user
+from app.database import Base, engine
 from generation_queue import (
     create_generation_batch,
     enqueue_generation_batch,
@@ -18,7 +20,7 @@ from websocket_manager import websocket_manager
 
 load_dotenv()
 
-from app.routes import audio, images, movie, storyboard, video
+from app.routes import audio, auth, images, movie, projects, storyboard, video
 
 
 @asynccontextmanager
@@ -36,6 +38,8 @@ async def lifespan(app: FastAPI):
             pass
 
 
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(
     title="AI Film Studio API",
     lifespan=lifespan,
@@ -52,11 +56,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(storyboard.router)
-app.include_router(images.router)
-app.include_router(audio.router)
-app.include_router(video.router)
-app.include_router(movie.router)
+app.include_router(auth.router)
+app.include_router(projects.router)
+app.include_router(storyboard.router, dependencies=[Depends(get_current_user)])
+app.include_router(images.router, dependencies=[Depends(get_current_user)])
+app.include_router(audio.router, dependencies=[Depends(get_current_user)])
+app.include_router(video.router, dependencies=[Depends(get_current_user)])
+app.include_router(movie.router, dependencies=[Depends(get_current_user)])
 
 
 @app.get("/")
@@ -83,7 +89,7 @@ def redis_health():
     }
 
 
-@app.post("/api/generation-queue")
+@app.post("/api/generation-queue", dependencies=[Depends(get_current_user)])
 async def start_generation_queue(payload: dict):
     batch = create_generation_batch(payload)
     enqueue_generation_batch(batch["id"])
@@ -95,7 +101,7 @@ async def start_generation_queue(payload: dict):
     }
 
 
-@app.get("/api/generation-queue/{batch_id}")
+@app.get("/api/generation-queue/{batch_id}", dependencies=[Depends(get_current_user)])
 def get_generation_queue(batch_id: str):
     batch = get_generation_batch(batch_id)
 
@@ -109,7 +115,7 @@ def get_generation_queue(batch_id: str):
     return batch
 
 
-@app.post("/api/generation-queue/{batch_id}/cancel")
+@app.post("/api/generation-queue/{batch_id}/cancel", dependencies=[Depends(get_current_user)])
 def cancel_generation_queue(batch_id: str):
     batch = request_cancel_generation_batch(batch_id)
 
@@ -128,7 +134,7 @@ def cancel_generation_queue(batch_id: str):
     }
 
 
-@app.post("/api/generation-queue/{batch_id}/retry-failed")
+@app.post("/api/generation-queue/{batch_id}/retry-failed", dependencies=[Depends(get_current_user)])
 def retry_failed_generation_queue(batch_id: str):
     batch = retry_failed_generation_batch(batch_id)
 
