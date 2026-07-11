@@ -827,7 +827,17 @@ function Dashboard() {
 
   return (
     <>
-      <AppMenuBar />
+      <AppMenuBar
+        activeProjectId={activeProjectId}
+        activeProjectName={
+          projects.find((project) => project.id === activeProjectId)?.name ??
+          movieTitle ??
+          "Untitled Project"
+        }
+        activeProjectRole={
+          projects.find((project) => project.id === activeProjectId)?.role
+        }
+      />
 
       <main className="container py-5">
         <Hero />
