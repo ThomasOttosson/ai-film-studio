@@ -17,6 +17,15 @@ import {
   connectGenerationQueueSocket,
   type GenerationQueueSocketMessage,
 } from "../api/generationQueueSocket";
+import {
+  connectLiveCollaborationSocket,
+  type LiveSocketMessage,
+} from "../api/liveCollaborationSocket";
+import {
+  closeLiveSession,
+  leaveLiveSession as leaveLiveSessionRequest,
+  type CollaborationRole,
+} from "../api/liveCollaborationApi";
 import AppMenuBar from "../components/AppMenuBar";
 import FinalMovie from "../components/FinalMovie";
 import GenerationQueue, {
@@ -83,10 +92,21 @@ function Dashboard() {
 
   const queueReconnectTimeoutRef = useRef<number | null>(null);
   const queuePingIntervalRef = useRef<number | null>(null);
+  const liveSocketRef = useRef<ReturnType<typeof connectLiveCollaborationSocket> | null>(null);
+  const livePingIntervalRef = useRef<number | null>(null);
+  const applyingRemoteUpdateRef = useRef(false);
+  const liveUserIdRef = useRef<number | null>(null);
 
   const [projects, setProjects] = useState<StoredProject[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [activeProjectId, setActiveProjectIdState] = useState("");
+  const [activeLiveSessionId, setActiveLiveSessionId] = useState<string | null>(null);
+  const [liveOnlineCount, setLiveOnlineCount] = useState(0);
+  const [lastLiveUpdatedBy, setLastLiveUpdatedBy] = useState("");
+  const [liveRole, setLiveRole] = useState<CollaborationRole | "owner" | null>(null);
+  const [livePermissionMessage, setLivePermissionMessage] = useState("");
+  const [endLiveDialogOpen, setEndLiveDialogOpen] = useState(false);
+  const [isEndingLiveSession, setIsEndingLiveSession] = useState(false);
 
   const [movieTitle, setMovieTitle] = useState(
     initialProject.data.movieTitle
@@ -138,6 +158,56 @@ function Dashboard() {
     aspectRatio,
     finalMovieUrl,
   };
+
+
+  const activeProject = projects.find((project) => project.id === activeProjectId);
+
+  function leaveLiveSession() {
+    liveSocketRef.current?.close();
+    liveSocketRef.current = null;
+    if (livePingIntervalRef.current !== null) {
+      window.clearInterval(livePingIntervalRef.current);
+      livePingIntervalRef.current = null;
+    }
+    setActiveLiveSessionId(null);
+    setLiveOnlineCount(0);
+    setLastLiveUpdatedBy("");
+    liveUserIdRef.current = null;
+    setLiveRole(null);
+    setLivePermissionMessage("");
+  }
+
+  function joinLiveSession(sessionId: string) {
+    if (activeLiveSessionId === sessionId) return;
+    leaveLiveSession();
+    setActiveLiveSessionId(sessionId);
+  }
+
+  async function handleEndLiveSession() {
+    if (!activeLiveSessionId) return;
+
+    try {
+      setIsEndingLiveSession(true);
+
+      if (liveRole === "owner") {
+        await closeLiveSession(activeLiveSessionId);
+      } else {
+        await leaveLiveSessionRequest(activeLiveSessionId);
+      }
+
+      setEndLiveDialogOpen(false);
+      leaveLiveSession();
+    } catch (error) {
+      console.error("Failed to end live collaboration:", error);
+      alert(
+        liveRole === "owner"
+          ? "Could not close the live collaboration session."
+          : "Could not leave the live collaboration session."
+      );
+    } finally {
+      setIsEndingLiveSession(false);
+    }
+  }
 
   function clearQueueReconnectTimeout() {
     if (queueReconnectTimeoutRef.current !== null) {
@@ -353,8 +423,88 @@ function Dashboard() {
     };
   }, [activeQueueBatchId, isRunningQueue]);
 
+  useEffect(() => {
+    if (!activeLiveSessionId) return;
+
+    const connection = connectLiveCollaborationSocket({
+      sessionId: activeLiveSessionId,
+      onOpen: () => {
+        livePingIntervalRef.current = window.setInterval(() => {
+          liveSocketRef.current?.sendPing();
+        }, 25_000);
+      },
+      onMessage: (message: LiveSocketMessage) => {
+        if (message.event === "connected") {
+          liveUserIdRef.current = message.userId;
+          setLiveRole(message.role);
+          setLivePermissionMessage("");
+          return;
+        }
+        if (message.event === "presence") {
+          setLiveOnlineCount(message.onlineUserIds.length);
+          return;
+        }
+        if (message.event === "role_changed") {
+          if (message.userId === liveUserIdRef.current) {
+            setLiveRole(message.role);
+            setLivePermissionMessage(
+              message.role === "viewer"
+                ? "Your role was changed to Viewer. You can watch changes but cannot edit."
+                : "Your role was changed to Editor. You can edit again."
+            );
+          }
+          return;
+        }
+        if (message.event === "participant_removed") {
+          if (message.userId === liveUserIdRef.current) {
+            setLivePermissionMessage("You were removed from the live session.");
+            leaveLiveSession();
+          }
+          return;
+        }
+        if (message.event === "permission_denied") {
+          setLivePermissionMessage(message.message);
+          return;
+        }
+        if (message.event === "project_update") {
+          applyingRemoteUpdateRef.current = true;
+          setMovieTitle(message.data.movieTitle);
+          setMovieIdea(message.data.movieIdea);
+          setScenes(message.data.scenes);
+          setStyle(message.data.style);
+          setSceneLength(message.data.sceneLength);
+          setAspectRatio(message.data.aspectRatio);
+          setFinalMovieUrl(message.data.finalMovieUrl);
+          setLastLiveUpdatedBy(message.updatedBy);
+        }
+      },
+      onClose: () => {
+        if (livePingIntervalRef.current !== null) {
+          window.clearInterval(livePingIntervalRef.current);
+          livePingIntervalRef.current = null;
+        }
+        liveSocketRef.current = null;
+      },
+      onError: (event) => {
+        console.error("Live collaboration WebSocket error:", event);
+      },
+    });
+
+    liveSocketRef.current = connection;
+
+    return () => {
+      connection.close();
+      if (livePingIntervalRef.current !== null) {
+        window.clearInterval(livePingIntervalRef.current);
+        livePingIntervalRef.current = null;
+      }
+      liveSocketRef.current = null;
+    };
+  }, [activeLiveSessionId]);
+
   function loadProjectIntoEditor(project: StoredProject) {
     closeQueueSocket();
+    leaveLiveSession();
 
     setActiveProjectId(project.id);
     setActiveProjectIdState(project.id);
@@ -425,11 +575,30 @@ function Dashboard() {
     }
 
     saveTimeoutRef.current = window.setTimeout(async () => {
+      if (applyingRemoteUpdateRef.current) {
+        applyingRemoteUpdateRef.current = false;
+        return;
+      }
+
+      const canEditProject =
+        activeProject?.role === "owner" ||
+        activeProject?.role === "editor" ||
+        liveRole === "owner" ||
+        liveRole === "editor";
+
+      if (!canEditProject) {
+        return;
+      }
+
       try {
         const savedProject = await updateProject(
           activeProjectId,
           currentProjectData
         );
+
+        if (liveRole === "owner" || liveRole === "editor") {
+          liveSocketRef.current?.sendProjectUpdate(currentProjectData);
+        }
 
         setProjects((currentProjects) =>
           currentProjects
@@ -461,6 +630,8 @@ function Dashboard() {
     sceneLength,
     aspectRatio,
     finalMovieUrl,
+    activeProject?.role,
+    liveRole,
   ]);
 
   function handleClearQueue() {
@@ -829,15 +1000,93 @@ function Dashboard() {
     <>
       <AppMenuBar
         activeProjectId={activeProjectId}
-        activeProjectName={
-          projects.find((project) => project.id === activeProjectId)?.name ??
-          movieTitle ??
-          "Untitled Project"
-        }
-        activeProjectRole={
-          projects.find((project) => project.id === activeProjectId)?.role
-        }
+        activeProjectName={activeProject?.name ?? "Untitled Project"}
+        activeProjectRole={activeProject?.role}
+        activeLiveSessionId={activeLiveSessionId}
+        onJoinLiveSession={joinLiveSession}
+        onLeaveLiveSession={leaveLiveSession}
       />
+
+      {activeLiveSessionId && (
+        <div className="container pt-3">
+          <div className="live-session-status-bar">
+            <div className="live-session-status-text">
+              <span className="live-session-dot" aria-hidden="true" />
+              <strong>Live session active</strong>
+              <span>
+                {liveOnlineCount} user{liveOnlineCount === 1 ? "" : "s"} online
+              </span>
+              {liveRole ? <span>Role: {liveRole}</span> : null}
+              {lastLiveUpdatedBy ? (
+                <span>Last update from {lastLiveUpdatedBy}</span>
+              ) : null}
+              {livePermissionMessage ? <span>{livePermissionMessage}</span> : null}
+            </div>
+
+            <button
+              type="button"
+              className="live-session-end-button"
+              onClick={() => setEndLiveDialogOpen(true)}
+            >
+              End
+            </button>
+          </div>
+        </div>
+      )}
+
+      {endLiveDialogOpen && activeLiveSessionId && (
+        <div
+          className="share-dialog-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="end-live-session-title"
+          onClick={() => {
+            if (!isEndingLiveSession) setEndLiveDialogOpen(false);
+          }}
+        >
+          <div
+            className="share-dialog end-live-session-dialog"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="share-dialog-header">
+              <div>
+                <h2 id="end-live-session-title">
+                  {liveRole === "owner"
+                    ? "End live collaboration?"
+                    : "Leave live collaboration?"}
+                </h2>
+                <p>
+                  {liveRole === "owner"
+                    ? "This will disconnect every participant and close the session."
+                    : "You will leave the session. Other participants can continue collaborating."}
+                </p>
+              </div>
+            </div>
+
+            <div className="share-dialog-actions">
+              <button
+                type="button"
+                onClick={() => setEndLiveDialogOpen(false)}
+                disabled={isEndingLiveSession}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="confirm-end-live-button"
+                onClick={() => void handleEndLiveSession()}
+                disabled={isEndingLiveSession}
+              >
+                {isEndingLiveSession
+                  ? "Ending..."
+                  : liveRole === "owner"
+                    ? "End session"
+                    : "Leave session"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="container py-5">
         <Hero />

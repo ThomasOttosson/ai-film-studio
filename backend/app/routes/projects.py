@@ -9,7 +9,13 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..auth import get_current_user
 from ..database import get_db
-from ..models import Project, ProjectMember, User
+from ..models import (
+    LiveCollaborationParticipant,
+    LiveCollaborationSession,
+    Project,
+    ProjectMember,
+    User,
+)
 
 router = APIRouter(prefix="/api/projects", tags=["Projects"])
 
@@ -209,8 +215,30 @@ def update_project(
         project_id,
         user,
         db,
-        allowed_roles=("owner", "editor"),
     )
+
+    can_edit = role in ("owner", "editor")
+    if not can_edit:
+        live_editor = db.scalar(
+            select(LiveCollaborationParticipant.id)
+            .join(
+                LiveCollaborationSession,
+                LiveCollaborationSession.id == LiveCollaborationParticipant.session_id,
+            )
+            .where(
+                LiveCollaborationSession.project_id == project_id,
+                LiveCollaborationSession.status == "active",
+                LiveCollaborationParticipant.user_id == user.id,
+                LiveCollaborationParticipant.role == "editor",
+            )
+        )
+        can_edit = live_editor is not None
+
+    if not can_edit:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to edit this project",
+        )
 
     project.name = payload.name
     project.thumbnail = payload.thumbnail

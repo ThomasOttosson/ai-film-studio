@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.auth import get_current_user
-from app.database import Base, engine
+from app.auth import decode_token, get_current_user
+from app.database import Base, SessionLocal, engine
+from app.schema_migrations import ensure_live_collaboration_schema
 from generation_queue import (
     create_generation_batch,
     enqueue_generation_batch,
@@ -17,10 +18,11 @@ from generation_queue import (
 from redis_client import redis_client
 from redis_events import redis_event_listener
 from websocket_manager import websocket_manager
+from live_collaboration_manager import live_collaboration_manager
 
 load_dotenv()
 
-from app.routes import audio, auth, images, movie, projects, storyboard, video
+from app.routes import audio, auth, images, live_collaboration, movie, projects, storyboard, video
 
 
 @asynccontextmanager
@@ -39,6 +41,7 @@ async def lifespan(app: FastAPI):
 
 
 Base.metadata.create_all(bind=engine)
+ensure_live_collaboration_schema(engine)
 
 app = FastAPI(
     title="AI Film Studio API",
@@ -58,6 +61,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(projects.router)
+app.include_router(live_collaboration.router)
 app.include_router(storyboard.router, dependencies=[Depends(get_current_user)])
 app.include_router(images.router, dependencies=[Depends(get_current_user)])
 app.include_router(audio.router, dependencies=[Depends(get_current_user)])
@@ -192,3 +196,91 @@ async def generation_queue_websocket(
             await websocket.close()
         except Exception:
             pass
+
+
+@app.websocket("/ws/live-collaboration/{session_id}")
+async def live_collaboration_websocket(
+    websocket: WebSocket,
+    session_id: str,
+):
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4401, reason="Authentication required")
+        return
+
+    db = SessionLocal()
+    user = None
+    try:
+        from sqlalchemy import select
+        from app.models import (
+            LiveCollaborationParticipant,
+            LiveCollaborationSession,
+            User,
+        )
+
+        user = db.get(User, decode_token(token))
+        session = db.get(LiveCollaborationSession, session_id)
+        if not user or not session or session.status != "active":
+            await websocket.close(code=4404, reason="Session not found")
+            return
+
+        participant_role = "owner" if session.created_by == user.id else None
+        if participant_role is None:
+            participant = db.scalar(
+                select(LiveCollaborationParticipant).where(
+                    LiveCollaborationParticipant.session_id == session_id,
+                    LiveCollaborationParticipant.user_id == user.id,
+                )
+            )
+            participant_role = participant.role if participant else None
+
+        if participant_role is None:
+            await websocket.close(code=4403, reason="Invitation must be accepted first")
+            return
+
+        await live_collaboration_manager.connect(session_id, user.id, websocket)
+        await websocket.send_json({
+            "event": "connected",
+            "sessionId": session_id,
+            "userId": user.id,
+            "email": user.email,
+            "role": participant_role,
+        })
+
+        while True:
+            message = await websocket.receive_json()
+            event = message.get("event")
+            if event == "ping":
+                await websocket.send_json({"event": "pong"})
+                continue
+            if event == "project_update":
+                current_role = "owner" if session.created_by == user.id else db.scalar(
+                    select(LiveCollaborationParticipant.role).where(
+                        LiveCollaborationParticipant.session_id == session_id,
+                        LiveCollaborationParticipant.user_id == user.id,
+                    )
+                )
+                if current_role not in ("owner", "editor"):
+                    await websocket.send_json({
+                        "event": "permission_denied",
+                        "message": "Viewer access cannot send project updates.",
+                    })
+                    continue
+
+                await live_collaboration_manager.broadcast(
+                    session_id,
+                    {
+                        "event": "project_update",
+                        "data": message.get("data"),
+                        "updatedBy": user.email,
+                    },
+                    exclude=websocket,
+                )
+    except WebSocketDisconnect:
+        pass
+    except Exception as error:
+        print(f"Live collaboration WebSocket error for {session_id}: {error}")
+    finally:
+        if user is not None:
+            await live_collaboration_manager.disconnect(session_id, user.id, websocket)
+        db.close()
