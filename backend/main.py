@@ -6,17 +6,19 @@ from dotenv import load_dotenv
 # Environment variables must be loaded before database.py creates the engine.
 load_dotenv()
 
-from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
 from app.auth import decode_token, get_current_user
-from app.database import Base, SessionLocal, engine
+from app.database import Base, SessionLocal, engine, get_db
 from app.models import (
     LiveCollaborationParticipant,
     LiveCollaborationSession,
     User,
 )
+from app.routes.projects import accessible_project
+from app.schemas.generation_queue import StartGenerationQueueRequest
 from app.routes import (
     audio,
     auth,
@@ -156,10 +158,26 @@ def redis_health():
 
 @app.post(
     "/api/generation-queue",
-    dependencies=[Depends(get_current_user)],
 )
-async def start_generation_queue(payload: dict):
-    batch = create_generation_batch(payload)
+async def start_generation_queue(
+    payload: StartGenerationQueueRequest,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    project_id = payload.projectId
+
+    accessible_project(
+        project_id,
+        user,
+        db,
+        allowed_roles=("owner", "editor"),
+    )
+
+    batch = create_generation_batch(
+        payload,
+        user_id=user.id,
+        project_id=project_id,
+    )
 
     enqueue_generation_batch(batch["id"])
 
@@ -167,42 +185,50 @@ async def start_generation_queue(payload: dict):
         "batch_id": batch["id"],
         "status": batch["status"],
         "steps": batch["steps"],
+        "scenes": batch["scenes"],
     }
 
 
-@app.get(
-    "/api/generation-queue/{batch_id}",
-    dependencies=[Depends(get_current_user)],
-)
-def get_generation_queue(batch_id: str):
+def owned_generation_batch(
+    batch_id: str,
+    user: User,
+) -> dict:
     batch = get_generation_batch(batch_id)
 
-    if not batch:
-        return {
-            "status": "not_found",
-            "steps": [],
-            "scenes": [],
-        }
+    if not batch or batch.get("userId") != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Generation batch not found",
+        )
 
     return batch
 
 
+@app.get(
+    "/api/generation-queue/{batch_id}",
+)
+def get_generation_queue(
+    batch_id: str,
+    user: User = Depends(get_current_user),
+):
+    return owned_generation_batch(batch_id, user)
+
+
 @app.post(
     "/api/generation-queue/{batch_id}/cancel",
-    dependencies=[Depends(get_current_user)],
 )
-def cancel_generation_queue(batch_id: str):
-    batch = request_cancel_generation_batch(
-        batch_id
-    )
+def cancel_generation_queue(
+    batch_id: str,
+    user: User = Depends(get_current_user),
+):
+    owned_generation_batch(batch_id, user)
+    batch = request_cancel_generation_batch(batch_id)
 
     if not batch:
-        return {
-            "status": "not_found",
-            "message": (
-                "Generation batch was not found."
-            ),
-        }
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Generation batch not found",
+        )
 
     return {
         "batch_id": batch["id"],
@@ -218,22 +244,19 @@ def cancel_generation_queue(batch_id: str):
 
 @app.post(
     "/api/generation-queue/{batch_id}/retry-failed",
-    dependencies=[Depends(get_current_user)],
 )
 def retry_failed_generation_queue(
     batch_id: str,
+    user: User = Depends(get_current_user),
 ):
-    batch = retry_failed_generation_batch(
-        batch_id
-    )
+    owned_generation_batch(batch_id, user)
+    batch = retry_failed_generation_batch(batch_id)
 
     if not batch:
-        return {
-            "status": "not_found",
-            "message": (
-                "Generation batch was not found."
-            ),
-        }
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Generation batch not found",
+        )
 
     return {
         "batch_id": batch["id"],
@@ -254,28 +277,37 @@ async def generation_queue_websocket(
     websocket: WebSocket,
     batch_id: str,
 ):
-    await websocket_manager.connect(
-        batch_id,
-        websocket,
-    )
+    token = websocket.query_params.get("token")
+
+    if not token:
+        await websocket.close(
+            code=4401,
+            reason="Authentication required",
+        )
+        return
 
     try:
+        user_id = decode_token(token)
         batch = get_generation_batch(batch_id)
 
-        if batch:
-            await websocket.send_json(
-                {
-                    "event": "batch_snapshot",
-                    "batch": batch,
-                }
+        if not batch or batch.get("userId") != user_id:
+            await websocket.close(
+                code=4404,
+                reason="Generation batch not found",
             )
-        else:
-            await websocket.send_json(
-                {
-                    "event": "batch_not_found",
-                    "batch_id": batch_id,
-                }
-            )
+            return
+
+        await websocket_manager.connect(
+            batch_id,
+            websocket,
+        )
+
+        await websocket.send_json(
+            {
+                "event": "batch_snapshot",
+                "batch": batch,
+            }
+        )
 
         while True:
             await websocket.receive_text()
@@ -285,6 +317,15 @@ async def generation_queue_websocket(
             batch_id,
             websocket,
         )
+
+    except HTTPException:
+        try:
+            await websocket.close(
+                code=4401,
+                reason="Invalid or expired token",
+            )
+        except Exception:
+            pass
 
     except Exception as error:
         print(

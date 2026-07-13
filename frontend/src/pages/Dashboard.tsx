@@ -922,11 +922,17 @@ function Dashboard() {
       return;
     }
 
+    if (!activeProjectId) {
+      alert("Save or open a project before generating media.");
+      return;
+    }
+
     try {
       closeQueueSocket();
       setIsCancellingQueue(false);
 
       const startedQueue = await startGenerationQueue({
+        projectId: activeProjectId,
         scenes,
         style,
         sceneLength,

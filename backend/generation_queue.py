@@ -1,16 +1,14 @@
+import asyncio
 import json
-import os
 import uuid
 from datetime import datetime
 from typing import Any
 
-import httpx
+from app.schemas.generation_queue import StartGenerationQueueRequest
+from app.schemas.images import AudioRequest, ImageRequest, VideoRequest
+from app.services.luma_service import generate_ai_video_from_scene
+from app.services.openai_service import generate_audio_with_ai, generate_image_with_ai
 from redis_client import redis_client
-
-INTERNAL_API_BASE_URL = os.getenv(
-    "INTERNAL_API_BASE_URL",
-    "http://backend:8000",
-)
 
 QUEUE_LIST_KEY = "ai-film-studio:generation-jobs"
 EVENT_CHANNEL = "ai-film-studio:events"
@@ -44,9 +42,14 @@ def publish_batch_update(batch: dict[str, Any]) -> None:
     )
 
 
-def create_generation_batch(payload: dict[str, Any]) -> dict[str, Any]:
+def create_generation_batch(
+    request: StartGenerationQueueRequest,
+    user_id: int,
+    project_id: str,
+) -> dict[str, Any]:
     batch_id = str(uuid.uuid4())
-    scenes = payload.get("scenes", [])
+    payload = request.model_dump()
+    scenes = payload["scenes"]
 
     steps = []
 
@@ -83,6 +86,8 @@ def create_generation_batch(payload: dict[str, Any]) -> dict[str, Any]:
 
     batch = {
         "id": batch_id,
+        "userId": user_id,
+        "projectId": project_id,
         "status": "waiting",
         "cancel_requested": False,
         "createdAt": now_iso(),
@@ -202,161 +207,151 @@ async def process_generation_batch(batch_id: str) -> None:
     aspect_ratio = payload.get("aspectRatio", "16:9")
     scene_length = payload.get("sceneLength", 5)
 
-    async with httpx.AsyncClient(timeout=300) as client:
-        for step in batch["steps"]:
-            batch = get_generation_batch(batch_id) or batch
+    for step in batch["steps"]:
+        batch = get_generation_batch(batch_id) or batch
 
-            if is_batch_cancelled(batch):
-                mark_batch_cancelled(batch)
-                return
+        if is_batch_cancelled(batch):
+            mark_batch_cancelled(batch)
+            return
 
-            update_step(batch, step["id"], "running")
+        update_step(batch, step["id"], "running")
 
-            scene = next(
-                (
-                    current_scene
-                    for current_scene in batch["scenes"]
-                    if current_scene["id"] == step["sceneId"]
-                ),
-                None,
+        scene = next(
+            (
+                current_scene
+                for current_scene in batch["scenes"]
+                if current_scene["id"] == step["sceneId"]
+            ),
+            None,
+        )
+
+        if not scene:
+            update_step(
+                batch,
+                step["id"],
+                "failed",
+                "Scene not found.",
             )
+            continue
 
-            if not scene:
-                update_step(
-                    batch,
-                    step["id"],
-                    "failed",
-                    "Scene not found.",
+        try:
+            if step["type"] == "image":
+                result = await asyncio.to_thread(
+                    generate_image_with_ai,
+                    ImageRequest(
+                        scene_title=scene["title"],
+                        narration=scene["narration"],
+                        mood=scene["mood"],
+                        style=style,
+                    ),
                 )
-                continue
-
-            try:
-                if step["type"] == "image":
-                    response = await client.post(
-                        f"{INTERNAL_API_BASE_URL}/api/generate-image",
-                        json={
-                            "scene_title": scene["title"],
-                            "narration": scene["narration"],
-                            "mood": scene["mood"],
-                            "style": style,
-                        },
-                    )
-
-                    response.raise_for_status()
-                    result = response.json()
-
-                    batch = get_generation_batch(batch_id) or batch
-
-                    if is_batch_cancelled(batch):
-                        mark_batch_cancelled(batch)
-                        return
-
-                    update_scene(
-                        batch,
-                        scene["id"],
-                        {
-                            "imageUrl": result["image_url"],
-                            "imagePrompt": result.get("prompt", ""),
-                        },
-                    )
-
-                elif step["type"] == "audio":
-                    response = await client.post(
-                        f"{INTERNAL_API_BASE_URL}/api/generate-audio",
-                        json={
-                            "scene_title": scene["title"],
-                            "narration": scene["narration"],
-                            "voice": "alloy",
-                        },
-                    )
-
-                    response.raise_for_status()
-                    result = response.json()
-
-                    batch = get_generation_batch(batch_id) or batch
-
-                    if is_batch_cancelled(batch):
-                        mark_batch_cancelled(batch)
-                        return
-
-                    update_scene(
-                        batch,
-                        scene["id"],
-                        {
-                            "audioUrl": result["audio_url"],
-                            "audioPrompt": result.get("prompt", ""),
-                        },
-                    )
-
-                elif step["type"] == "video":
-                    fresh_batch = get_generation_batch(batch_id) or batch
-
-                    if is_batch_cancelled(fresh_batch):
-                        mark_batch_cancelled(fresh_batch)
-                        return
-
-                    fresh_scene = next(
-                        (
-                            current_scene
-                            for current_scene in fresh_batch["scenes"]
-                            if current_scene["id"] == scene["id"]
-                        ),
-                        None,
-                    )
-
-                    if (
-                        not fresh_scene
-                        or not fresh_scene.get("imageUrl")
-                        or not fresh_scene.get("audioUrl")
-                    ):
-                        update_step(
-                            fresh_batch,
-                            step["id"],
-                            "failed",
-                            "Image and audio are required before video.",
-                        )
-                        continue
-
-                    response = await client.post(
-                        f"{INTERNAL_API_BASE_URL}/api/generate-video",
-                        json={
-                            "scene_title": fresh_scene["title"],
-                            "image_url": fresh_scene["imageUrl"],
-                            "audio_url": fresh_scene["audioUrl"],
-                            "scene_length": scene_length,
-                            "aspect_ratio": aspect_ratio,
-                        },
-                    )
-
-                    response.raise_for_status()
-                    result = response.json()
-
-                    batch = get_generation_batch(batch_id) or fresh_batch
-
-                    if is_batch_cancelled(batch):
-                        mark_batch_cancelled(batch)
-                        return
-
-                    update_scene(
-                        batch,
-                        scene["id"],
-                        {
-                            "videoUrl": result["video_url"],
-                            "videoPrompt": result.get("prompt", ""),
-                        },
-                    )
 
                 batch = get_generation_batch(batch_id) or batch
-                update_step(batch, step["id"], "done")
 
-            except Exception as error:
-                batch = get_generation_batch(batch_id) or batch
-                update_step(
+                if is_batch_cancelled(batch):
+                    mark_batch_cancelled(batch)
+                    return
+
+                update_scene(
                     batch,
-                    step["id"],
-                    "failed",
-                    str(error),
+                    scene["id"],
+                    {
+                        "imageUrl": result.image_url,
+                        "imagePrompt": result.prompt,
+                    },
                 )
+
+            elif step["type"] == "audio":
+                result = await asyncio.to_thread(
+                    generate_audio_with_ai,
+                    AudioRequest(
+                        scene_title=scene["title"],
+                        narration=scene["narration"],
+                        voice="alloy",
+                    ),
+                )
+
+                batch = get_generation_batch(batch_id) or batch
+
+                if is_batch_cancelled(batch):
+                    mark_batch_cancelled(batch)
+                    return
+
+                update_scene(
+                    batch,
+                    scene["id"],
+                    {
+                        "audioUrl": result.audio_url,
+                        "audioPrompt": result.prompt,
+                    },
+                )
+
+            elif step["type"] == "video":
+                fresh_batch = get_generation_batch(batch_id) or batch
+
+                if is_batch_cancelled(fresh_batch):
+                    mark_batch_cancelled(fresh_batch)
+                    return
+
+                fresh_scene = next(
+                    (
+                        current_scene
+                        for current_scene in fresh_batch["scenes"]
+                        if current_scene["id"] == scene["id"]
+                    ),
+                    None,
+                )
+
+                if (
+                    not fresh_scene
+                    or not fresh_scene.get("imageUrl")
+                    or not fresh_scene.get("audioUrl")
+                ):
+                    update_step(
+                        fresh_batch,
+                        step["id"],
+                        "failed",
+                        "Image and audio are required before video.",
+                    )
+                    continue
+
+                result = await asyncio.to_thread(
+                    generate_ai_video_from_scene,
+                    VideoRequest(
+                        scene_title=fresh_scene["title"],
+                        image_url=fresh_scene["imageUrl"],
+                        audio_url=fresh_scene["audioUrl"],
+                        scene_length=scene_length,
+                        aspect_ratio=aspect_ratio,
+                    ),
+                )
+
+                batch = get_generation_batch(batch_id) or fresh_batch
+
+                if is_batch_cancelled(batch):
+                    mark_batch_cancelled(batch)
+                    return
+
+                update_scene(
+                    batch,
+                    scene["id"],
+                    {
+                        "videoUrl": result.video_url,
+                        "videoPrompt": result.prompt,
+                    },
+                )
+
+            batch = get_generation_batch(batch_id) or batch
+            update_step(batch, step["id"], "done")
+
+        except Exception as error:
+            batch = get_generation_batch(batch_id) or batch
+            update_step(
+                batch,
+                step["id"],
+                "failed",
+                str(error),
+            )
 
     batch = get_generation_batch(batch_id)
 

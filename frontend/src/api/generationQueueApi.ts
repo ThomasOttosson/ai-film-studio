@@ -3,6 +3,7 @@ import type { Scene } from "../types/film";
 import apiClient from "./client";
 
 export interface StartGenerationQueuePayload {
+  projectId: string;
   scenes: Scene[];
   style: string;
   sceneLength: number;

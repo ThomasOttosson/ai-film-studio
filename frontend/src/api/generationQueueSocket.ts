@@ -1,4 +1,5 @@
 import type { GenerationQueueResponse } from "./generationQueueApi";
+import { AUTH_TOKEN_KEY } from "./client";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -28,7 +29,11 @@ export function connectGenerationQueueSocket({
   onClose,
   onError,
 }: ConnectGenerationQueueSocketOptions) {
-  const socketUrl = `${getWebSocketBaseUrl()}/ws/generation-queue/${batchId}`;
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const tokenQuery = token
+    ? `?token=${encodeURIComponent(token)}`
+    : "";
+  const socketUrl = `${getWebSocketBaseUrl()}/ws/generation-queue/${batchId}${tokenQuery}`;
   const socket = new WebSocket(socketUrl);
 
   socket.onopen = () => {
