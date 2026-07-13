@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
 from app.auth import decode_token, get_current_user
-from app.database import Base, SessionLocal, engine, get_db
+from app.database import SessionLocal, get_db
 from app.models import (
     LiveCollaborationParticipant,
     LiveCollaborationSession,
@@ -30,7 +30,6 @@ from app.routes import (
     storyboard,
     video,
 )
-from app.schema_migrations import ensure_live_collaboration_schema
 from generation_queue import (
     create_generation_batch,
     enqueue_generation_batch,
@@ -50,16 +49,14 @@ async def lifespan(app: FastAPI):
     Runs application startup and shutdown logic.
 
     Startup:
-    - Creates database tables that do not already exist.
-    - Applies small backwards-compatible schema migrations.
     - Starts the Redis event listener.
+
+    Database schema changes are applied by Alembic before
+    the API process starts.
 
     Shutdown:
     - Cancels the Redis listener safely.
     """
-
-    Base.metadata.create_all(bind=engine)
-    ensure_live_collaboration_schema(engine)
 
     redis_listener_task = asyncio.create_task(
         redis_event_listener()
