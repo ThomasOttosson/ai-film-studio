@@ -23,6 +23,7 @@ from app.routes import (
     images,
     live_collaboration,
     movie,
+    notifications,
     projects,
     storyboard,
     video,
@@ -93,6 +94,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(live_collaboration.router)
+app.include_router(notifications.router)
 
 app.include_router(
     storyboard.router,

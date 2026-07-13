@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -23,6 +23,7 @@ class User(Base):
     live_sessions_created = relationship("LiveCollaborationSession", back_populates="creator", cascade="all, delete-orphan")
     live_invitations = relationship("LiveCollaborationInvitation", back_populates="invited_user", cascade="all, delete-orphan")
     live_participations = relationship("LiveCollaborationParticipant", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
 
 class Project(Base):
@@ -99,3 +100,23 @@ class LiveCollaborationParticipant(Base):
 
     session = relationship("LiveCollaborationSession", back_populates="participants")
     user = relationship("User", back_populates="live_participations")
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    type: Mapped[str] = mapped_column(String(60), index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    message: Mapped[str] = mapped_column(String(500))
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="notifications")
+
+    def mark_read(self) -> None:
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = utcnow()

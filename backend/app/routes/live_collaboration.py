@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from live_collaboration_manager import live_collaboration_manager
 from ..auth import get_current_user
 from ..database import get_db
+from ..notifications import create_notification
 from ..models import (
     LiveCollaborationInvitation,
     LiveCollaborationParticipant,
@@ -251,6 +252,22 @@ def invite_user(session_id: str, payload: InvitePayload, user: User = Depends(ge
         status="pending",
     )
     db.add(invitation)
+    invited_user = db.get(User, payload.userId)
+    if invited_user:
+        create_notification(
+            db,
+            user_id=invited_user.id,
+            notification_type="live_collaboration_invitation",
+            title="Live collaboration invitation",
+            message=f"{user.email} invited you to collaborate on {session.project.name} as {payload.role}.",
+            data={
+                "sessionId": session.id,
+                "projectId": session.project_id,
+                "projectName": session.project.name,
+                "role": payload.role,
+                "invitedBy": user.email,
+            },
+        )
     db.commit()
     loaded = _load_session(session.id, db)
     assert loaded is not None
@@ -301,6 +318,22 @@ def respond_to_invitation(invitation_id: int, payload: RespondPayload, user: Use
                 user_id=user.id,
                 role=invitation.role,
             ))
+    session_owner_id = invitation.session.created_by if invitation.session else None
+    if session_owner_id is not None:
+        create_notification(
+            db,
+            user_id=session_owner_id,
+            notification_type=f"live_collaboration_{payload.response}",
+            title=f"Live invitation {payload.response}",
+            message=f"{user.email} {payload.response} your invitation to {invitation.session.project.name}.",
+            data={
+                "sessionId": invitation.session_id,
+                "projectId": invitation.session.project_id,
+                "projectName": invitation.session.project.name,
+                "respondedBy": user.email,
+                "response": payload.response,
+            },
+        )
     db.commit()
     session = _load_session(invitation.session_id, db)
     assert session is not None

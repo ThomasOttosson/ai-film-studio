@@ -43,9 +43,17 @@ body {
 /* ---------- Navbar ---------- */
 
 .navbar-custom {
+  position: relative;
+  z-index: 10000;
+  overflow: visible;
   background: rgba(11, 15, 25, 0.85);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.navbar-custom .container-fluid {
+  position: relative;
+  overflow: visible;
 }
 
 /* ---------- Cards ---------- */

@@ -1,5 +1,6 @@
 import { FiFilm, FiLogOut } from "react-icons/fi";
 import { useAuth } from "../auth/AuthContext";
+import NotificationCenter from "./NotificationCenter";
 
 function Navbar() {
   const { user, logout } = useAuth();
@@ -16,6 +17,8 @@ function Navbar() {
         </a>
 
         <div className="d-flex align-items-center gap-3 ms-auto">
+          <NotificationCenter />
+
           {user?.email && (
             <span className="text-light small d-none d-md-inline">
               {user.email}

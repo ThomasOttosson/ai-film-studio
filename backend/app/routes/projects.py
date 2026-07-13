@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..auth import get_current_user
 from ..database import get_db
+from ..notifications import create_notification
 from ..models import (
     LiveCollaborationParticipant,
     LiveCollaborationSession,
@@ -416,6 +417,19 @@ def invite_project_member(
     )
 
     db.add(membership)
+    create_notification(
+        db,
+        user_id=invited_user.id,
+        notification_type="project_shared",
+        title="Project shared with you",
+        message=f"{user.email} shared {project.name} with you as {payload.role}.",
+        data={
+            "projectId": project.id,
+            "projectName": project.name,
+            "role": payload.role,
+            "sharedBy": user.email,
+        },
+    )
     db.commit()
     db.refresh(membership)
 
