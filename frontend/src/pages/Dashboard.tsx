@@ -55,10 +55,18 @@ import {
   updateProject,
 } from "../api/projectApi";
 
-function getSceneSeconds(scene: Scene, fallbackSceneLength: number) {
-  const parsedSeconds = Number(String(scene.duration).replace(/[^0-9.]/g, ""));
+function getSceneSeconds(
+  scene: Scene,
+  fallbackSceneLength: number
+) {
+  const parsedSeconds = Number(
+    String(scene.duration).replace(/[^0-9.]/g, "")
+  );
 
-  if (Number.isFinite(parsedSeconds) && parsedSeconds > 0) {
+  if (
+    Number.isFinite(parsedSeconds) &&
+    parsedSeconds > 0
+  ) {
     return parsedSeconds;
   }
 
@@ -86,68 +94,137 @@ function Dashboard() {
 
   const projectsLoadedRef = useRef(false);
   const saveTimeoutRef = useRef<number | null>(null);
+
   const queueSocketRef = useRef<ReturnType<
     typeof connectGenerationQueueSocket
   > | null>(null);
 
-  const queueReconnectTimeoutRef = useRef<number | null>(null);
-  const queuePingIntervalRef = useRef<number | null>(null);
-  const liveSocketRef = useRef<ReturnType<typeof connectLiveCollaborationSocket> | null>(null);
-  const livePingIntervalRef = useRef<number | null>(null);
+  const queueReconnectTimeoutRef =
+    useRef<number | null>(null);
+
+  const queuePingIntervalRef =
+    useRef<number | null>(null);
+
+  const liveSocketRef = useRef<ReturnType<
+    typeof connectLiveCollaborationSocket
+  > | null>(null);
+
+  const livePingIntervalRef =
+    useRef<number | null>(null);
+
   const applyingRemoteUpdateRef = useRef(false);
   const liveUserIdRef = useRef<number | null>(null);
 
-  const [projects, setProjects] = useState<StoredProject[]>([]);
-  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
-  const [activeProjectId, setActiveProjectIdState] = useState("");
-  const [activeLiveSessionId, setActiveLiveSessionId] = useState<string | null>(null);
-  const [liveOnlineCount, setLiveOnlineCount] = useState(0);
-  const [lastLiveUpdatedBy, setLastLiveUpdatedBy] = useState("");
-  const [liveRole, setLiveRole] = useState<CollaborationRole | "owner" | null>(null);
-  const [livePermissionMessage, setLivePermissionMessage] = useState("");
-  const [endLiveDialogOpen, setEndLiveDialogOpen] = useState(false);
-  const [isEndingLiveSession, setIsEndingLiveSession] = useState(false);
+  const [projects, setProjects] = useState<
+    StoredProject[]
+  >([]);
+
+  const [
+    isLoadingProjects,
+    setIsLoadingProjects,
+  ] = useState(true);
+
+  const [
+    activeProjectId,
+    setActiveProjectIdState,
+  ] = useState("");
+
+  const [
+    activeLiveSessionId,
+    setActiveLiveSessionId,
+  ] = useState<string | null>(null);
+
+  const [liveOnlineCount, setLiveOnlineCount] =
+    useState(0);
+
+  const [
+    lastLiveUpdatedBy,
+    setLastLiveUpdatedBy,
+  ] = useState("");
+
+  const [liveRole, setLiveRole] = useState<
+    CollaborationRole | "owner" | null
+  >(null);
+
+  const [
+    livePermissionMessage,
+    setLivePermissionMessage,
+  ] = useState("");
+
+  const [
+    endLiveDialogOpen,
+    setEndLiveDialogOpen,
+  ] = useState(false);
+
+  const [
+    isEndingLiveSession,
+    setIsEndingLiveSession,
+  ] = useState(false);
 
   const [movieTitle, setMovieTitle] = useState(
     initialProject.data.movieTitle
   );
 
-  const [movieIdea, setMovieIdea] = useState(initialProject.data.movieIdea);
-  const [scenes, setScenes] = useState<Scene[]>(initialProject.data.scenes);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const [style, setStyle] = useState(initialProject.data.style);
-
-  const [sceneLength, setSceneLength] = useState(
-    initialProject.data.sceneLength
+  const [movieIdea, setMovieIdea] = useState(
+    initialProject.data.movieIdea
   );
 
-  const [aspectRatio, setAspectRatio] = useState(
-    initialProject.data.aspectRatio
+  const [scenes, setScenes] = useState<Scene[]>(
+    initialProject.data.scenes
   );
 
-  const [generatingImageSceneId, setGeneratingImageSceneId] =
-    useState<number | null>(null);
+  const [isLoading, setIsLoading] =
+    useState(false);
 
-  const [generatingAudioSceneId, setGeneratingAudioSceneId] =
-    useState<number | null>(null);
-
-  const [generatingVideoSceneId, setGeneratingVideoSceneId] =
-    useState<number | null>(null);
-
-  const [queueSteps, setQueueSteps] = useState<QueueStep[]>([]);
-  const [isRunningQueue, setIsRunningQueue] = useState(false);
-  const [isCancellingQueue, setIsCancellingQueue] = useState(false);
-
-  const [activeQueueBatchId, setActiveQueueBatchId] = useState<string | null>(
-    null
+  const [style, setStyle] = useState(
+    initialProject.data.style
   );
 
-  const [isGeneratingFullMovie, setIsGeneratingFullMovie] = useState(false);
+  const [sceneLength, setSceneLength] =
+    useState(initialProject.data.sceneLength);
 
-  const [finalMovieUrl, setFinalMovieUrl] = useState(
-    initialProject.data.finalMovieUrl
-  );
+  const [aspectRatio, setAspectRatio] =
+    useState(initialProject.data.aspectRatio);
+
+  const [
+    generatingImageSceneId,
+    setGeneratingImageSceneId,
+  ] = useState<number | null>(null);
+
+  const [
+    generatingAudioSceneId,
+    setGeneratingAudioSceneId,
+  ] = useState<number | null>(null);
+
+  const [
+    generatingVideoSceneId,
+    setGeneratingVideoSceneId,
+  ] = useState<number | null>(null);
+
+  const [queueSteps, setQueueSteps] = useState<
+    QueueStep[]
+  >([]);
+
+  const [isRunningQueue, setIsRunningQueue] =
+    useState(false);
+
+  const [
+    isCancellingQueue,
+    setIsCancellingQueue,
+  ] = useState(false);
+
+  const [
+    activeQueueBatchId,
+    setActiveQueueBatchId,
+  ] = useState<string | null>(null);
+
+  const [
+    isGeneratingFullMovie,
+    setIsGeneratingFullMovie,
+  ] = useState(false);
+
+  const [finalMovieUrl, setFinalMovieUrl] =
+    useState(initialProject.data.finalMovieUrl);
 
   const currentProjectData: SavedProjectData = {
     movieTitle,
@@ -159,16 +236,84 @@ function Dashboard() {
     finalMovieUrl,
   };
 
+  const activeProject = projects.find(
+    (project) => project.id === activeProjectId
+  );
 
-  const activeProject = projects.find((project) => project.id === activeProjectId);
+  async function handleManualSaveProject() {
+    if (!activeProjectId) {
+      throw new Error(
+        "No active project is open."
+      );
+    }
+
+    const canEditProject =
+      activeProject?.role === "owner" ||
+      activeProject?.role === "editor" ||
+      liveRole === "owner" ||
+      liveRole === "editor";
+
+    if (!canEditProject) {
+      throw new Error(
+        "You do not have permission to save changes to this project."
+      );
+    }
+
+    if (saveTimeoutRef.current !== null) {
+      window.clearTimeout(
+        saveTimeoutRef.current
+      );
+
+      saveTimeoutRef.current = null;
+    }
+
+    const savedProject = await updateProject(
+      activeProjectId,
+      currentProjectData
+    );
+
+    if (
+      liveRole === "owner" ||
+      liveRole === "editor"
+    ) {
+      liveSocketRef.current?.sendProjectUpdate(
+        currentProjectData
+      );
+    }
+
+    setProjects((currentProjects) =>
+      currentProjects
+        .map((project) =>
+          project.id === savedProject.id
+            ? savedProject
+            : project
+        )
+        .sort(
+          (firstProject, secondProject) =>
+            new Date(
+              secondProject.updatedAt
+            ).getTime() -
+            new Date(
+              firstProject.updatedAt
+            ).getTime()
+        )
+    );
+  }
 
   function leaveLiveSession() {
     liveSocketRef.current?.close();
     liveSocketRef.current = null;
-    if (livePingIntervalRef.current !== null) {
-      window.clearInterval(livePingIntervalRef.current);
+
+    if (
+      livePingIntervalRef.current !== null
+    ) {
+      window.clearInterval(
+        livePingIntervalRef.current
+      );
+
       livePingIntervalRef.current = null;
     }
+
     setActiveLiveSessionId(null);
     setLiveOnlineCount(0);
     setLastLiveUpdatedBy("");
@@ -178,27 +323,40 @@ function Dashboard() {
   }
 
   function joinLiveSession(sessionId: string) {
-    if (activeLiveSessionId === sessionId) return;
+    if (activeLiveSessionId === sessionId) {
+      return;
+    }
+
     leaveLiveSession();
     setActiveLiveSessionId(sessionId);
   }
 
   async function handleEndLiveSession() {
-    if (!activeLiveSessionId) return;
+    if (!activeLiveSessionId) {
+      return;
+    }
 
     try {
       setIsEndingLiveSession(true);
 
       if (liveRole === "owner") {
-        await closeLiveSession(activeLiveSessionId);
+        await closeLiveSession(
+          activeLiveSessionId
+        );
       } else {
-        await leaveLiveSessionRequest(activeLiveSessionId);
+        await leaveLiveSessionRequest(
+          activeLiveSessionId
+        );
       }
 
       setEndLiveDialogOpen(false);
       leaveLiveSession();
     } catch (error) {
-      console.error("Failed to end live collaboration:", error);
+      console.error(
+        "Failed to end live collaboration:",
+        error
+      );
+
       alert(
         liveRole === "owner"
           ? "Could not close the live collaboration session."
@@ -210,15 +368,23 @@ function Dashboard() {
   }
 
   function clearQueueReconnectTimeout() {
-    if (queueReconnectTimeoutRef.current !== null) {
-      window.clearTimeout(queueReconnectTimeoutRef.current);
+    if (
+      queueReconnectTimeoutRef.current !== null
+    ) {
+      window.clearTimeout(
+        queueReconnectTimeoutRef.current
+      );
+
       queueReconnectTimeoutRef.current = null;
     }
   }
 
   function clearQueuePingInterval() {
     if (queuePingIntervalRef.current !== null) {
-      window.clearInterval(queuePingIntervalRef.current);
+      window.clearInterval(
+        queuePingIntervalRef.current
+      );
+
       queuePingIntervalRef.current = null;
     }
   }
@@ -237,7 +403,9 @@ function Dashboard() {
     setIsCancellingQueue(false);
   }
 
-  function applyQueueResponse(queue: GenerationQueueResponse) {
+  function applyQueueResponse(
+    queue: GenerationQueueResponse
+  ) {
     setQueueSteps(queue.steps ?? []);
 
     if (queue.scenes?.length > 0) {
@@ -250,18 +418,11 @@ function Dashboard() {
     }
   }
 
-  /*
-   * Keep exactly one WebSocket connection open for the active queue.
-   *
-   * This effect intentionally depends only on:
-   * - activeQueueBatchId
-   * - isRunningQueue
-   *
-   * It must not depend on scenes or queueSteps because those values change
-   * for every WebSocket message and would repeatedly close the connection.
-   */
   useEffect(() => {
-    if (!activeQueueBatchId || !isRunningQueue) {
+    if (
+      !activeQueueBatchId ||
+      !isRunningQueue
+    ) {
       closeQueueSocket();
       return;
     }
@@ -280,7 +441,8 @@ function Dashboard() {
 
     async function recoverQueueSnapshot() {
       try {
-        const queue = await getGenerationQueue(batchId);
+        const queue =
+          await getGenerationQueue(batchId);
 
         if (effectDisposed) {
           return false;
@@ -292,7 +454,9 @@ function Dashboard() {
           setScenes(queue.scenes);
         }
 
-        if (isTerminalQueueStatus(queue.status)) {
+        if (
+          isTerminalQueueStatus(queue.status)
+        ) {
           setIsRunningQueue(false);
           setIsCancellingQueue(false);
           return false;
@@ -300,7 +464,11 @@ function Dashboard() {
 
         return true;
       } catch (error) {
-        console.error("Failed to recover queue snapshot:", error);
+        console.error(
+          "Failed to recover queue snapshot:",
+          error
+        );
+
         return true;
       }
     }
@@ -319,25 +487,34 @@ function Dashboard() {
 
       reconnectAttempts += 1;
 
-      queueReconnectTimeoutRef.current = window.setTimeout(async () => {
-        if (effectDisposed) {
-          return;
-        }
+      queueReconnectTimeoutRef.current =
+        window.setTimeout(async () => {
+          if (effectDisposed) {
+            return;
+          }
 
-        const queueStillRunning = await recoverQueueSnapshot();
+          const queueStillRunning =
+            await recoverQueueSnapshot();
 
-        if (!effectDisposed && queueStillRunning) {
-          openSocket();
-        }
-      }, reconnectDelay);
+          if (
+            !effectDisposed &&
+            queueStillRunning
+          ) {
+            openSocket();
+          }
+        }, reconnectDelay);
     }
 
-    function handleSocketMessage(message: GenerationQueueSocketMessage) {
+    function handleSocketMessage(
+      message: GenerationQueueSocketMessage
+    ) {
       if (effectDisposed) {
         return;
       }
 
-      if (message.event === "batch_not_found") {
+      if (
+        message.event === "batch_not_found"
+      ) {
         setQueueSteps([]);
         setIsRunningQueue(false);
         setIsCancellingQueue(false);
@@ -356,7 +533,9 @@ function Dashboard() {
         setScenes(batch.scenes);
       }
 
-      if (isTerminalQueueStatus(batch.status)) {
+      if (
+        isTerminalQueueStatus(batch.status)
+      ) {
         setIsRunningQueue(false);
         setIsCancellingQueue(false);
       }
@@ -369,48 +548,58 @@ function Dashboard() {
 
       cleanupCurrentConnection();
 
-      const connection = connectGenerationQueueSocket({
-        batchId,
+      const connection =
+        connectGenerationQueueSocket({
+          batchId,
 
-        onOpen: () => {
-          if (effectDisposed) {
-            return;
-          }
+          onOpen: () => {
+            if (effectDisposed) {
+              return;
+            }
 
-          console.log(`Generation WebSocket connected: ${batchId}`);
+            console.log(
+              `Generation WebSocket connected: ${batchId}`
+            );
 
-          reconnectAttempts = 0;
-          clearQueueReconnectTimeout();
-          clearQueuePingInterval();
+            reconnectAttempts = 0;
+            clearQueueReconnectTimeout();
+            clearQueuePingInterval();
 
-          queuePingIntervalRef.current = window.setInterval(() => {
-            queueSocketRef.current?.sendPing();
-          }, 25_000);
-        },
+            queuePingIntervalRef.current =
+              window.setInterval(() => {
+                queueSocketRef.current?.sendPing();
+              }, 25_000);
+          },
 
-        onMessage: handleSocketMessage,
+          onMessage: handleSocketMessage,
 
-        onError: (event) => {
-          if (effectDisposed) {
-            return;
-          }
+          onError: (event) => {
+            if (effectDisposed) {
+              return;
+            }
 
-          console.error("Generation WebSocket error:", event);
-        },
+            console.error(
+              "Generation WebSocket error:",
+              event
+            );
+          },
 
-        onClose: () => {
-          clearQueuePingInterval();
+          onClose: () => {
+            clearQueuePingInterval();
 
-          if (effectDisposed) {
-            return;
-          }
+            if (effectDisposed) {
+              return;
+            }
 
-          console.log(`Generation WebSocket closed: ${batchId}`);
-          queueSocketRef.current = null;
+            console.log(
+              `Generation WebSocket closed: ${batchId}`
+            );
 
-          scheduleReconnect();
-        },
-      });
+            queueSocketRef.current = null;
+
+            scheduleReconnect();
+          },
+        });
 
       queueSocketRef.current = connection;
     }
@@ -424,85 +613,171 @@ function Dashboard() {
   }, [activeQueueBatchId, isRunningQueue]);
 
   useEffect(() => {
-    if (!activeLiveSessionId) return;
+    if (!activeLiveSessionId) {
+      return;
+    }
 
-    const connection = connectLiveCollaborationSocket({
-      sessionId: activeLiveSessionId,
-      onOpen: () => {
-        livePingIntervalRef.current = window.setInterval(() => {
-          liveSocketRef.current?.sendPing();
-        }, 25_000);
-      },
-      onMessage: (message: LiveSocketMessage) => {
-        if (message.event === "connected") {
-          liveUserIdRef.current = message.userId;
-          setLiveRole(message.role);
-          setLivePermissionMessage("");
-          return;
-        }
-        if (message.event === "presence") {
-          setLiveOnlineCount(message.onlineUserIds.length);
-          return;
-        }
-        if (message.event === "role_changed") {
-          if (message.userId === liveUserIdRef.current) {
+    const connection =
+      connectLiveCollaborationSocket({
+        sessionId: activeLiveSessionId,
+
+        onOpen: () => {
+          livePingIntervalRef.current =
+            window.setInterval(() => {
+              liveSocketRef.current?.sendPing();
+            }, 25_000);
+        },
+
+        onMessage: (
+          message: LiveSocketMessage
+        ) => {
+          if (message.event === "connected") {
+            liveUserIdRef.current =
+              message.userId;
+
             setLiveRole(message.role);
+            setLivePermissionMessage("");
+            return;
+          }
+
+          if (message.event === "presence") {
+            setLiveOnlineCount(
+              message.onlineUserIds.length
+            );
+
+            return;
+          }
+
+          if (
+            message.event === "role_changed"
+          ) {
+            if (
+              message.userId ===
+              liveUserIdRef.current
+            ) {
+              setLiveRole(message.role);
+
+              setLivePermissionMessage(
+                message.role === "viewer"
+                  ? "Your role was changed to Viewer. You can watch changes but cannot edit."
+                  : "Your role was changed to Editor. You can edit again."
+              );
+            }
+
+            return;
+          }
+
+          if (
+            message.event ===
+            "participant_removed"
+          ) {
+            if (
+              message.userId ===
+              liveUserIdRef.current
+            ) {
+              setLivePermissionMessage(
+                "You were removed from the live session."
+              );
+
+              leaveLiveSession();
+            }
+
+            return;
+          }
+
+          if (
+            message.event ===
+            "permission_denied"
+          ) {
             setLivePermissionMessage(
-              message.role === "viewer"
-                ? "Your role was changed to Viewer. You can watch changes but cannot edit."
-                : "Your role was changed to Editor. You can edit again."
+              message.message
+            );
+
+            return;
+          }
+
+          if (
+            message.event ===
+            "project_update"
+          ) {
+            applyingRemoteUpdateRef.current =
+              true;
+
+            setMovieTitle(
+              message.data.movieTitle
+            );
+
+            setMovieIdea(
+              message.data.movieIdea
+            );
+
+            setScenes(message.data.scenes);
+            setStyle(message.data.style);
+
+            setSceneLength(
+              message.data.sceneLength
+            );
+
+            setAspectRatio(
+              message.data.aspectRatio
+            );
+
+            setFinalMovieUrl(
+              message.data.finalMovieUrl
+            );
+
+            setLastLiveUpdatedBy(
+              message.updatedBy
             );
           }
-          return;
-        }
-        if (message.event === "participant_removed") {
-          if (message.userId === liveUserIdRef.current) {
-            setLivePermissionMessage("You were removed from the live session.");
-            leaveLiveSession();
+        },
+
+        onClose: () => {
+          if (
+            livePingIntervalRef.current !==
+            null
+          ) {
+            window.clearInterval(
+              livePingIntervalRef.current
+            );
+
+            livePingIntervalRef.current =
+              null;
           }
-          return;
-        }
-        if (message.event === "permission_denied") {
-          setLivePermissionMessage(message.message);
-          return;
-        }
-        if (message.event === "project_update") {
-          applyingRemoteUpdateRef.current = true;
-          setMovieTitle(message.data.movieTitle);
-          setMovieIdea(message.data.movieIdea);
-          setScenes(message.data.scenes);
-          setStyle(message.data.style);
-          setSceneLength(message.data.sceneLength);
-          setAspectRatio(message.data.aspectRatio);
-          setFinalMovieUrl(message.data.finalMovieUrl);
-          setLastLiveUpdatedBy(message.updatedBy);
-        }
-      },
-      onClose: () => {
-        if (livePingIntervalRef.current !== null) {
-          window.clearInterval(livePingIntervalRef.current);
-          livePingIntervalRef.current = null;
-        }
-        liveSocketRef.current = null;
-      },
-      onError: (event) => {
-        console.error("Live collaboration WebSocket error:", event);
-      },
-    });
+
+          liveSocketRef.current = null;
+        },
+
+        onError: (event) => {
+          console.error(
+            "Live collaboration WebSocket error:",
+            event
+          );
+        },
+      });
 
     liveSocketRef.current = connection;
 
     return () => {
       connection.close();
-      if (livePingIntervalRef.current !== null) {
-        window.clearInterval(livePingIntervalRef.current);
+
+      if (
+        livePingIntervalRef.current !== null
+      ) {
+        window.clearInterval(
+          livePingIntervalRef.current
+        );
+
         livePingIntervalRef.current = null;
       }
+
       liveSocketRef.current = null;
     };
   }, [activeLiveSessionId]);
 
-  function loadProjectIntoEditor(project: StoredProject) {
+  function loadProjectIntoEditor(
+    project: StoredProject
+  ) {
     closeQueueSocket();
     leaveLiveSession();
 
@@ -513,9 +788,18 @@ function Dashboard() {
     setMovieIdea(project.data.movieIdea);
     setScenes(project.data.scenes);
     setStyle(project.data.style);
-    setSceneLength(project.data.sceneLength);
-    setAspectRatio(project.data.aspectRatio);
-    setFinalMovieUrl(project.data.finalMovieUrl);
+
+    setSceneLength(
+      project.data.sceneLength
+    );
+
+    setAspectRatio(
+      project.data.aspectRatio
+    );
+
+    setFinalMovieUrl(
+      project.data.finalMovieUrl
+    );
 
     setGeneratingImageSceneId(null);
     setGeneratingAudioSceneId(null);
@@ -534,29 +818,50 @@ function Dashboard() {
     async function loadProjects() {
       try {
         setIsLoadingProjects(true);
-        let serverProjects = await listProjects();
+
+        let serverProjects =
+          await listProjects();
 
         if (serverProjects.length === 0) {
-          const firstProject = await createProject(defaultProjectData);
+          const firstProject =
+            await createProject(
+              defaultProjectData
+            );
+
           serverProjects = [firstProject];
         }
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setProjects(serverProjects);
 
-        const rememberedProjectId = getActiveProjectId();
+        const rememberedProjectId =
+          getActiveProjectId();
+
         const projectToOpen =
-          serverProjects.find((project) => project.id === rememberedProjectId) ??
-          serverProjects[0];
+          serverProjects.find(
+            (project) =>
+              project.id ===
+              rememberedProjectId
+          ) ?? serverProjects[0];
 
         loadProjectIntoEditor(projectToOpen);
         projectsLoadedRef.current = true;
       } catch (error) {
-        console.error("Failed to load projects:", error);
-        alert("Could not load your projects from the server.");
+        console.error(
+          "Failed to load projects:",
+          error
+        );
+
+        alert(
+          "Could not load your projects from the server."
+        );
       } finally {
-        if (!cancelled) setIsLoadingProjects(false);
+        if (!cancelled) {
+          setIsLoadingProjects(false);
+        }
       }
     }
 
@@ -568,57 +873,93 @@ function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!projectsLoadedRef.current || !activeProjectId) return;
-
-    if (saveTimeoutRef.current !== null) {
-      window.clearTimeout(saveTimeoutRef.current);
+    if (
+      !projectsLoadedRef.current ||
+      !activeProjectId
+    ) {
+      return;
     }
 
-    saveTimeoutRef.current = window.setTimeout(async () => {
-      if (applyingRemoteUpdateRef.current) {
-        applyingRemoteUpdateRef.current = false;
-        return;
-      }
+    if (saveTimeoutRef.current !== null) {
+      window.clearTimeout(
+        saveTimeoutRef.current
+      );
+    }
 
-      const canEditProject =
-        activeProject?.role === "owner" ||
-        activeProject?.role === "editor" ||
-        liveRole === "owner" ||
-        liveRole === "editor";
+    saveTimeoutRef.current =
+      window.setTimeout(async () => {
+        if (
+          applyingRemoteUpdateRef.current
+        ) {
+          applyingRemoteUpdateRef.current =
+            false;
 
-      if (!canEditProject) {
-        return;
-      }
-
-      try {
-        const savedProject = await updateProject(
-          activeProjectId,
-          currentProjectData
-        );
-
-        if (liveRole === "owner" || liveRole === "editor") {
-          liveSocketRef.current?.sendProjectUpdate(currentProjectData);
+          return;
         }
 
-        setProjects((currentProjects) =>
-          currentProjects
-            .map((project) =>
-              project.id === savedProject.id ? savedProject : project
-            )
-            .sort(
-              (a, b) =>
-                new Date(b.updatedAt).getTime() -
-                new Date(a.updatedAt).getTime()
-            )
-        );
-      } catch (error) {
-        console.error("Failed to save project:", error);
-      }
-    }, 700);
+        const canEditProject =
+          activeProject?.role === "owner" ||
+          activeProject?.role === "editor" ||
+          liveRole === "owner" ||
+          liveRole === "editor";
+
+        if (!canEditProject) {
+          return;
+        }
+
+        try {
+          const savedProject =
+            await updateProject(
+              activeProjectId,
+              currentProjectData
+            );
+
+          if (
+            liveRole === "owner" ||
+            liveRole === "editor"
+          ) {
+            liveSocketRef.current?.sendProjectUpdate(
+              currentProjectData
+            );
+          }
+
+          setProjects(
+            (currentProjects) =>
+              currentProjects
+                .map((project) =>
+                  project.id ===
+                  savedProject.id
+                    ? savedProject
+                    : project
+                )
+                .sort(
+                  (
+                    firstProject,
+                    secondProject
+                  ) =>
+                    new Date(
+                      secondProject.updatedAt
+                    ).getTime() -
+                    new Date(
+                      firstProject.updatedAt
+                    ).getTime()
+                )
+          );
+        } catch (error) {
+          console.error(
+            "Failed to save project:",
+            error
+          );
+        }
+      }, 700);
 
     return () => {
-      if (saveTimeoutRef.current !== null) {
-        window.clearTimeout(saveTimeoutRef.current);
+      if (
+        saveTimeoutRef.current !== null
+      ) {
+        window.clearTimeout(
+          saveTimeoutRef.current
+        );
       }
     };
   }, [
@@ -647,60 +988,113 @@ function Dashboard() {
 
   async function handleCreateProject() {
     try {
-      const project = await createProject(defaultProjectData);
-      setProjects((currentProjects) => [project, ...currentProjects]);
+      const project = await createProject(
+        defaultProjectData
+      );
+
+      setProjects((currentProjects) => [
+        project,
+        ...currentProjects,
+      ]);
+
       loadProjectIntoEditor(project);
     } catch (error) {
-      console.error("Failed to create project:", error);
-      alert("Could not create a new project.");
+      console.error(
+        "Failed to create project:",
+        error
+      );
+
+      alert(
+        "Could not create a new project."
+      );
     }
   }
 
-  function handleOpenProject(projectId: string) {
+  function handleOpenProject(
+    projectId: string
+  ) {
     const project = projects.find(
-      (storedProject) => storedProject.id === projectId
+      (storedProject) =>
+        storedProject.id === projectId
     );
 
-    if (project) loadProjectIntoEditor(project);
-  }
-
-  async function handleDuplicateProject(projectId: string) {
-    try {
-      const duplicated = await duplicateProject(projectId);
-      setProjects((currentProjects) => [duplicated, ...currentProjects]);
-      loadProjectIntoEditor(duplicated);
-    } catch (error) {
-      console.error("Failed to duplicate project:", error);
-      alert("Could not duplicate the project.");
+    if (project) {
+      loadProjectIntoEditor(project);
     }
   }
 
-  async function handleDeleteProject(projectId: string) {
+  async function handleDuplicateProject(
+    projectId: string
+  ) {
+    try {
+      const duplicated =
+        await duplicateProject(projectId);
+
+      setProjects((currentProjects) => [
+        duplicated,
+        ...currentProjects,
+      ]);
+
+      loadProjectIntoEditor(duplicated);
+    } catch (error) {
+      console.error(
+        "Failed to duplicate project:",
+        error
+      );
+
+      alert(
+        "Could not duplicate the project."
+      );
+    }
+  }
+
+  async function handleDeleteProject(
+    projectId: string
+  ) {
     const shouldDelete = window.confirm(
       "Are you sure you want to delete this project?"
     );
 
-    if (!shouldDelete) return;
+    if (!shouldDelete) {
+      return;
+    }
 
     try {
       await deleteProject(projectId);
-      let remainingProjects = projects.filter(
-        (project) => project.id !== projectId
-      );
+
+      let remainingProjects =
+        projects.filter(
+          (project) =>
+            project.id !== projectId
+        );
 
       if (remainingProjects.length === 0) {
-        const replacement = await createProject(defaultProjectData);
+        const replacement =
+          await createProject(
+            defaultProjectData
+          );
+
         remainingProjects = [replacement];
       }
 
       setProjects(remainingProjects);
 
-      if (projectId === activeProjectId) {
-        loadProjectIntoEditor(remainingProjects[0]);
+      if (
+        projectId === activeProjectId
+      ) {
+        loadProjectIntoEditor(
+          remainingProjects[0]
+        );
       }
     } catch (error) {
-      console.error("Failed to delete project:", error);
-      alert("Could not delete the project.");
+      console.error(
+        "Failed to delete project:",
+        error
+      );
+
+      alert(
+        "Could not delete the project."
+      );
     }
   }
 
@@ -715,13 +1109,28 @@ function Dashboard() {
 
     closeQueueSocket();
 
-    setMovieTitle(defaultProjectData.movieTitle);
-    setMovieIdea(defaultProjectData.movieIdea);
+    setMovieTitle(
+      defaultProjectData.movieTitle
+    );
+
+    setMovieIdea(
+      defaultProjectData.movieIdea
+    );
+
     setScenes(defaultProjectData.scenes);
     setStyle(defaultProjectData.style);
-    setSceneLength(defaultProjectData.sceneLength);
-    setAspectRatio(defaultProjectData.aspectRatio);
-    setFinalMovieUrl(defaultProjectData.finalMovieUrl);
+
+    setSceneLength(
+      defaultProjectData.sceneLength
+    );
+
+    setAspectRatio(
+      defaultProjectData.aspectRatio
+    );
+
+    setFinalMovieUrl(
+      defaultProjectData.finalMovieUrl
+    );
 
     setQueueSteps([]);
     setIsRunningQueue(false);
@@ -734,19 +1143,22 @@ function Dashboard() {
       closeQueueSocket();
       setIsLoading(true);
 
-      const generatedScenes = await generateStoryboard({
-        title: movieTitle,
-        idea: movieIdea,
-        genre: "Sci-Fi",
-        style,
-        scene_count: 3,
-        scene_length: sceneLength,
-      });
+      const generatedScenes =
+        await generateStoryboard({
+          title: movieTitle,
+          idea: movieIdea,
+          genre: "Sci-Fi",
+          style,
+          scene_count: 3,
+          scene_length: sceneLength,
+        });
 
       setScenes(
         generatedScenes.map((scene) => ({
           ...scene,
-          duration: scene.duration ?? `${sceneLength}s`,
+          duration:
+            scene.duration ??
+            `${sceneLength}s`,
         }))
       );
 
@@ -756,7 +1168,10 @@ function Dashboard() {
       setActiveQueueBatchId(null);
       setFinalMovieUrl("");
     } catch (error) {
-      console.error("Failed to generate storyboard:", error);
+      console.error(
+        "Failed to generate storyboard:",
+        error
+      );
 
       alert(
         "Could not generate storyboard. Make sure the backend is running."
@@ -766,142 +1181,216 @@ function Dashboard() {
     }
   }
 
-  async function handleGenerateImage(scene: Scene) {
+  async function handleGenerateImage(
+    scene: Scene
+  ) {
     try {
       setGeneratingImageSceneId(scene.id);
 
-      const result = await generateSceneImage({
-        scene_title: scene.title,
-        narration: scene.narration,
-        mood: scene.mood,
-        style,
-      });
+      const result =
+        await generateSceneImage({
+          scene_title: scene.title,
+          narration: scene.narration,
+          mood: scene.mood,
+          style,
+        });
 
       setScenes((currentScenes) =>
-        currentScenes.map((currentScene) =>
-          currentScene.id === scene.id
-            ? {
-                ...currentScene,
-                imageUrl: result.image_url,
-                imagePrompt: result.prompt,
-              }
-            : currentScene
+        currentScenes.map(
+          (currentScene) =>
+            currentScene.id === scene.id
+              ? {
+                  ...currentScene,
+                  imageUrl:
+                    result.image_url,
+                  imagePrompt:
+                    result.prompt,
+                }
+              : currentScene
         )
       );
     } catch (error) {
-      console.error("Failed to generate image:", error);
-      alert("Could not generate image. Check your backend terminal.");
+      console.error(
+        "Failed to generate image:",
+        error
+      );
+
+      alert(
+        "Could not generate image. Check your backend terminal."
+      );
     } finally {
       setGeneratingImageSceneId(null);
     }
   }
 
-  async function handleGenerateAudio(scene: Scene) {
+  async function handleGenerateAudio(
+    scene: Scene
+  ) {
     try {
       setGeneratingAudioSceneId(scene.id);
 
-      const result = await generateSceneAudio({
-        scene_title: scene.title,
-        narration: scene.narration,
-        voice: "alloy",
-      });
+      const result =
+        await generateSceneAudio({
+          scene_title: scene.title,
+          narration: scene.narration,
+          voice: "alloy",
+        });
 
       setScenes((currentScenes) =>
-        currentScenes.map((currentScene) =>
-          currentScene.id === scene.id
-            ? {
-                ...currentScene,
-                audioUrl: result.audio_url,
-                audioPrompt: result.prompt,
-              }
-            : currentScene
+        currentScenes.map(
+          (currentScene) =>
+            currentScene.id === scene.id
+              ? {
+                  ...currentScene,
+                  audioUrl:
+                    result.audio_url,
+                  audioPrompt:
+                    result.prompt,
+                }
+              : currentScene
         )
       );
     } catch (error) {
-      console.error("Failed to generate audio:", error);
-      alert("Could not generate audio. Check your backend terminal.");
+      console.error(
+        "Failed to generate audio:",
+        error
+      );
+
+      alert(
+        "Could not generate audio. Check your backend terminal."
+      );
     } finally {
       setGeneratingAudioSceneId(null);
     }
   }
 
-  async function handleGenerateVideo(scene: Scene) {
+  async function handleGenerateVideo(
+    scene: Scene
+  ) {
     const latestScene = scenes.find(
-      (currentScene) => currentScene.id === scene.id
+      (currentScene) =>
+        currentScene.id === scene.id
     );
 
-    if (!latestScene?.imageUrl || !latestScene?.audioUrl) {
-      alert("Generate both image and audio before creating a video.");
+    if (
+      !latestScene?.imageUrl ||
+      !latestScene?.audioUrl
+    ) {
+      alert(
+        "Generate both image and audio before creating a video."
+      );
+
       return;
     }
 
     try {
-      setGeneratingVideoSceneId(latestScene.id);
+      setGeneratingVideoSceneId(
+        latestScene.id
+      );
 
-      const result = await generateSceneVideo({
-        scene_title: latestScene.title,
-        image_url: latestScene.imageUrl,
-        audio_url: latestScene.audioUrl,
-        scene_length: getSceneSeconds(latestScene, sceneLength),
-        aspect_ratio: aspectRatio,
-      });
+      const result =
+        await generateSceneVideo({
+          scene_title: latestScene.title,
+          image_url: latestScene.imageUrl,
+          audio_url: latestScene.audioUrl,
+          scene_length: getSceneSeconds(
+            latestScene,
+            sceneLength
+          ),
+          aspect_ratio: aspectRatio,
+        });
 
       setScenes((currentScenes) =>
-        currentScenes.map((currentScene) =>
-          currentScene.id === latestScene.id
-            ? {
-                ...currentScene,
-                videoUrl: result.video_url,
-                videoPrompt: result.prompt,
-              }
-            : currentScene
+        currentScenes.map(
+          (currentScene) =>
+            currentScene.id ===
+            latestScene.id
+              ? {
+                  ...currentScene,
+                  videoUrl:
+                    result.video_url,
+                  videoPrompt:
+                    result.prompt,
+                }
+              : currentScene
         )
       );
     } catch (error) {
-      console.error("Failed to generate video:", error);
-      alert("Could not generate video. Check your backend terminal.");
+      console.error(
+        "Failed to generate video:",
+        error
+      );
+
+      alert(
+        "Could not generate video. Check your backend terminal."
+      );
     } finally {
       setGeneratingVideoSceneId(null);
     }
   }
 
   async function handleCancelQueue() {
-    if (!activeQueueBatchId || isCancellingQueue) {
+    if (
+      !activeQueueBatchId ||
+      isCancellingQueue
+    ) {
       return;
     }
 
     try {
       setIsCancellingQueue(true);
 
-      const cancelledQueue = await cancelGenerationQueue(activeQueueBatchId);
+      const cancelledQueue =
+        await cancelGenerationQueue(
+          activeQueueBatchId
+        );
 
       applyQueueResponse(cancelledQueue);
     } catch (error) {
-      console.error("Failed to cancel queue:", error);
-      alert("Could not cancel generation queue.");
+      console.error(
+        "Failed to cancel queue:",
+        error
+      );
+
+      alert(
+        "Could not cancel generation queue."
+      );
+
       setIsCancellingQueue(false);
     }
   }
 
   async function handleRetryFailedQueue() {
-    if (!activeQueueBatchId || isRunningQueue) {
+    if (
+      !activeQueueBatchId ||
+      isRunningQueue
+    ) {
       return;
     }
 
     try {
       closeQueueSocket();
 
-      const retriedQueue = await retryFailedGenerationQueue(
-        activeQueueBatchId
+      const retriedQueue =
+        await retryFailedGenerationQueue(
+          activeQueueBatchId
+        );
+
+      setQueueSteps(
+        retriedQueue.steps ?? []
       );
 
-      setQueueSteps(retriedQueue.steps ?? []);
-
-      if (retriedQueue.scenes?.length > 0) {
+      if (
+        retriedQueue.scenes?.length > 0
+      ) {
         setScenes(retriedQueue.scenes);
       }
 
-      if (isTerminalQueueStatus(retriedQueue.status)) {
+      if (
+        isTerminalQueueStatus(
+          retriedQueue.status
+        )
+      ) {
         setIsRunningQueue(false);
         setIsCancellingQueue(false);
         return;
@@ -910,20 +1399,32 @@ function Dashboard() {
       setIsCancellingQueue(false);
       setIsRunningQueue(true);
     } catch (error) {
-      console.error("Failed to retry failed queue:", error);
-      alert("Could not retry failed generation steps.");
+      console.error(
+        "Failed to retry failed queue:",
+        error
+      );
+
+      alert(
+        "Could not retry failed generation steps."
+      );
 
       resetQueueConnection();
     }
   }
 
   async function handleGenerateAllMedia() {
-    if (scenes.length === 0 || isRunningQueue) {
+    if (
+      scenes.length === 0 ||
+      isRunningQueue
+    ) {
       return;
     }
 
     if (!activeProjectId) {
-      alert("Save or open a project before generating media.");
+      alert(
+        "Save or open a project before generating media."
+      );
+
       return;
     }
 
@@ -931,25 +1432,37 @@ function Dashboard() {
       closeQueueSocket();
       setIsCancellingQueue(false);
 
-      const startedQueue = await startGenerationQueue({
-        projectId: activeProjectId,
-        scenes,
-        style,
-        sceneLength,
-        aspectRatio,
-      });
+      const startedQueue =
+        await startGenerationQueue({
+          projectId: activeProjectId,
+          scenes,
+          style,
+          sceneLength,
+          aspectRatio,
+        });
 
-      const batchId = startedQueue.batch_id || startedQueue.id;
+      const batchId =
+        startedQueue.batch_id ||
+        startedQueue.id;
 
       if (!batchId) {
-        throw new Error("No queue batch ID returned from backend.");
+        throw new Error(
+          "No queue batch ID returned from backend."
+        );
       }
 
       setActiveQueueBatchId(batchId);
-      setQueueSteps(startedQueue.steps ?? []);
+
+      setQueueSteps(
+        startedQueue.steps ?? []
+      );
+
       setIsRunningQueue(true);
     } catch (error) {
-      console.error("Failed to start generation queue:", error);
+      console.error(
+        "Failed to start generation queue:",
+        error
+      );
 
       alert(
         "Could not start generation queue. Check your backend terminal."
@@ -963,7 +1476,10 @@ function Dashboard() {
   async function handleGenerateFullMovie() {
     const videoUrls = scenes
       .map((scene) => scene.videoUrl)
-      .filter((url): url is string => Boolean(url));
+      .filter(
+        (url): url is string =>
+          Boolean(url)
+      );
 
     if (videoUrls.length === 0) {
       alert(
@@ -976,16 +1492,26 @@ function Dashboard() {
     try {
       setIsGeneratingFullMovie(true);
 
-      const result = await generateFullMovie({
-        title: movieTitle || "Untitled Film",
-        video_urls: videoUrls,
-      });
+      const result =
+        await generateFullMovie({
+          title:
+            movieTitle ||
+            "Untitled Film",
+          video_urls: videoUrls,
+        });
 
-      setFinalMovieUrl(result.final_movie_url);
+      setFinalMovieUrl(
+        result.final_movie_url
+      );
     } catch (error) {
-      console.error("Failed to generate full movie:", error);
+      console.error(
+        "Failed to generate full movie:",
+        error
+      );
 
-      alert("Could not generate full movie. Check your backend terminal.");
+      alert(
+        "Could not generate full movie. Check your backend terminal."
+      );
     } finally {
       setIsGeneratingFullMovie(false);
     }
@@ -995,8 +1521,14 @@ function Dashboard() {
     return (
       <main className="container py-5">
         <div className="card card-dark p-5 text-center">
-          <h1 className="h4 fw-bold mb-2">Loading your projects...</h1>
-          <p className="muted-text mb-0">Fetching your workspace from PostgreSQL.</p>
+          <h1 className="h4 fw-bold mb-2">
+            Loading your projects...
+          </h1>
+
+          <p className="muted-text mb-0">
+            Fetching your workspace from
+            PostgreSQL.
+          </p>
         </div>
       </main>
     );
@@ -1006,33 +1538,78 @@ function Dashboard() {
     <>
       <AppMenuBar
         activeProjectId={activeProjectId}
-        activeProjectName={activeProject?.name ?? "Untitled Project"}
-        activeProjectRole={activeProject?.role}
-        activeLiveSessionId={activeLiveSessionId}
-        onJoinLiveSession={joinLiveSession}
-        onLeaveLiveSession={leaveLiveSession}
+        activeProjectName={
+          activeProject?.name ??
+          "Untitled Project"
+        }
+        activeProjectRole={
+          activeProject?.role
+        }
+        activeProjectData={
+          currentProjectData
+        }
+        activeLiveSessionId={
+          activeLiveSessionId
+        }
+        onSaveProject={
+          handleManualSaveProject
+        }
+        onJoinLiveSession={
+          joinLiveSession
+        }
+        onLeaveLiveSession={
+          leaveLiveSession
+        }
       />
 
       {activeLiveSessionId && (
         <div className="container pt-3">
           <div className="live-session-status-bar">
             <div className="live-session-status-text">
-              <span className="live-session-dot" aria-hidden="true" />
-              <strong>Live session active</strong>
+              <span
+                className="live-session-dot"
+                aria-hidden="true"
+              />
+
+              <strong>
+                Live session active
+              </strong>
+
               <span>
-                {liveOnlineCount} user{liveOnlineCount === 1 ? "" : "s"} online
+                {liveOnlineCount}{" "}
+                user
+                {liveOnlineCount === 1
+                  ? ""
+                  : "s"}{" "}
+                online
               </span>
-              {liveRole ? <span>Role: {liveRole}</span> : null}
-              {lastLiveUpdatedBy ? (
-                <span>Last update from {lastLiveUpdatedBy}</span>
+
+              {liveRole ? (
+                <span>
+                  Role: {liveRole}
+                </span>
               ) : null}
-              {livePermissionMessage ? <span>{livePermissionMessage}</span> : null}
+
+              {lastLiveUpdatedBy ? (
+                <span>
+                  Last update from{" "}
+                  {lastLiveUpdatedBy}
+                </span>
+              ) : null}
+
+              {livePermissionMessage ? (
+                <span>
+                  {livePermissionMessage}
+                </span>
+              ) : null}
             </div>
 
             <button
               type="button"
               className="live-session-end-button"
-              onClick={() => setEndLiveDialogOpen(true)}
+              onClick={() =>
+                setEndLiveDialogOpen(true)
+              }
             >
               End
             </button>
@@ -1040,71 +1617,107 @@ function Dashboard() {
         </div>
       )}
 
-      {endLiveDialogOpen && activeLiveSessionId && (
-        <div
-          className="share-dialog-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="end-live-session-title"
-          onClick={() => {
-            if (!isEndingLiveSession) setEndLiveDialogOpen(false);
-          }}
-        >
+      {endLiveDialogOpen &&
+        activeLiveSessionId && (
           <div
-            className="share-dialog end-live-session-dialog"
-            onClick={(event) => event.stopPropagation()}
+            className="share-dialog-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="end-live-session-title"
+            onClick={() => {
+              if (
+                !isEndingLiveSession
+              ) {
+                setEndLiveDialogOpen(
+                  false
+                );
+              }
+            }}
           >
-            <div className="share-dialog-header">
-              <div>
-                <h2 id="end-live-session-title">
-                  {liveRole === "owner"
-                    ? "End live collaboration?"
-                    : "Leave live collaboration?"}
-                </h2>
-                <p>
-                  {liveRole === "owner"
-                    ? "This will disconnect every participant and close the session."
-                    : "You will leave the session. Other participants can continue collaborating."}
-                </p>
+            <div
+              className="share-dialog end-live-session-dialog"
+              onClick={(event) =>
+                event.stopPropagation()
+              }
+            >
+              <div className="share-dialog-header">
+                <div>
+                  <h2 id="end-live-session-title">
+                    {liveRole ===
+                    "owner"
+                      ? "End live collaboration?"
+                      : "Leave live collaboration?"}
+                  </h2>
+
+                  <p>
+                    {liveRole ===
+                    "owner"
+                      ? "This will disconnect every participant and close the session."
+                      : "You will leave the session. Other participants can continue collaborating."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="share-dialog-actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEndLiveDialogOpen(
+                      false
+                    )
+                  }
+                  disabled={
+                    isEndingLiveSession
+                  }
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className="confirm-end-live-button"
+                  onClick={() =>
+                    void handleEndLiveSession()
+                  }
+                  disabled={
+                    isEndingLiveSession
+                  }
+                >
+                  {isEndingLiveSession
+                    ? "Ending..."
+                    : liveRole ===
+                        "owner"
+                      ? "End session"
+                      : "Leave session"}
+                </button>
               </div>
             </div>
-
-            <div className="share-dialog-actions">
-              <button
-                type="button"
-                onClick={() => setEndLiveDialogOpen(false)}
-                disabled={isEndingLiveSession}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="confirm-end-live-button"
-                onClick={() => void handleEndLiveSession()}
-                disabled={isEndingLiveSession}
-              >
-                {isEndingLiveSession
-                  ? "Ending..."
-                  : liveRole === "owner"
-                    ? "End session"
-                    : "Leave session"}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
 
       <main className="container py-5">
         <Hero />
 
         <ProjectManager
           projects={projects}
-          activeProjectId={activeProjectId}
-          currentProjectData={currentProjectData}
-          onCreateProject={handleCreateProject}
-          onOpenProject={handleOpenProject}
-          onDuplicateProject={handleDuplicateProject}
-          onDeleteProject={handleDeleteProject}
+          activeProjectId={
+            activeProjectId
+          }
+          currentProjectData={
+            currentProjectData
+          }
+          onCreateProject={
+            handleCreateProject
+          }
+          onOpenProject={
+            handleOpenProject
+          }
+          onDuplicateProject={
+            handleDuplicateProject
+          }
+          onDeleteProject={
+            handleDeleteProject
+          }
         />
 
         <ProjectSettings
@@ -1112,23 +1725,35 @@ function Dashboard() {
           sceneLength={sceneLength}
           aspectRatio={aspectRatio}
           onStyleChange={setStyle}
-          onSceneLengthChange={setSceneLength}
-          onAspectRatioChange={setAspectRatio}
+          onSceneLengthChange={
+            setSceneLength
+          }
+          onAspectRatioChange={
+            setAspectRatio
+          }
         />
 
         <ProjectForm
           movieTitle={movieTitle}
           movieIdea={movieIdea}
-          onMovieTitleChange={setMovieTitle}
-          onMovieIdeaChange={setMovieIdea}
-          onGenerateStoryboard={handleGenerateStoryboard}
+          onMovieTitleChange={
+            setMovieTitle
+          }
+          onMovieIdeaChange={
+            setMovieIdea
+          }
+          onGenerateStoryboard={
+            handleGenerateStoryboard
+          }
         />
 
         <div className="d-flex justify-content-end mb-5">
           <button
             className="btn btn-outline-danger"
             type="button"
-            onClick={handleClearCurrentProject}
+            onClick={
+              handleClearCurrentProject
+            }
           >
             Clear Current Project
           </button>
@@ -1141,7 +1766,8 @@ function Dashboard() {
             </h2>
 
             <p className="muted-text">
-              AI Film Studio is creating your first scene structure.
+              AI Film Studio is creating
+              your first scene structure.
             </p>
           </div>
         )}
@@ -1150,58 +1776,93 @@ function Dashboard() {
           <>
             <GenerationQueue
               scenes={scenes}
-              isRunning={isRunningQueue}
-              isCancelling={isCancellingQueue}
+              isRunning={
+                isRunningQueue
+              }
+              isCancelling={
+                isCancellingQueue
+              }
               queueSteps={queueSteps}
-              onGenerateAll={handleGenerateAllMedia}
-              onClearQueue={handleClearQueue}
-              onCancelQueue={handleCancelQueue}
-              onRetryFailed={handleRetryFailedQueue}
+              onGenerateAll={
+                handleGenerateAllMedia
+              }
+              onClearQueue={
+                handleClearQueue
+              }
+              onCancelQueue={
+                handleCancelQueue
+              }
+              onRetryFailed={
+                handleRetryFailedQueue
+              }
             />
 
             <section className="mb-5">
-              <h2 className="h3 fw-bold mb-4">Storyboard</h2>
+              <h2 className="h3 fw-bold mb-4">
+                Storyboard
+              </h2>
 
               <div className="row g-4">
                 {scenes.map((scene) => (
                   <SceneCard
                     key={scene.id}
                     scene={scene}
-                    onGenerateImage={handleGenerateImage}
-                    onGenerateAudio={handleGenerateAudio}
-                    onGenerateVideo={handleGenerateVideo}
+                    onGenerateImage={
+                      handleGenerateImage
+                    }
+                    onGenerateAudio={
+                      handleGenerateAudio
+                    }
+                    onGenerateVideo={
+                      handleGenerateVideo
+                    }
                     isGeneratingImage={
-                      generatingImageSceneId === scene.id
+                      generatingImageSceneId ===
+                      scene.id
                     }
                     isGeneratingAudio={
-                      generatingAudioSceneId === scene.id
+                      generatingAudioSceneId ===
+                      scene.id
                     }
                     isGeneratingVideo={
-                      generatingVideoSceneId === scene.id
+                      generatingVideoSceneId ===
+                      scene.id
                     }
                   />
                 ))}
               </div>
             </section>
 
-            <VideoEditor scenes={scenes} setScenes={setScenes} />
+            <VideoEditor
+              scenes={scenes}
+              setScenes={setScenes}
+            />
 
             <MediaPipeline />
 
-            <MediaLibrary scenes={scenes} />
+            <MediaLibrary
+              scenes={scenes}
+            />
 
             <section className="card card-dark p-4 mt-5">
-              <h2 className="h4 fw-bold mb-3">Export Movie</h2>
+              <h2 className="h4 fw-bold mb-3">
+                Export Movie
+              </h2>
 
               <p className="muted-text mb-3">
-                Combine all generated scene videos into one final movie.
+                Combine all generated scene
+                videos into one final movie.
               </p>
 
               <button
                 className="btn btn-gradient"
                 type="button"
-                onClick={handleGenerateFullMovie}
-                disabled={isGeneratingFullMovie}
+                onClick={
+                  handleGenerateFullMovie
+                }
+                disabled={
+                  isGeneratingFullMovie
+                }
               >
                 {isGeneratingFullMovie
                   ? "Generating final movie..."
@@ -1210,7 +1871,11 @@ function Dashboard() {
             </section>
 
             {finalMovieUrl && (
-              <FinalMovie finalMovieUrl={finalMovieUrl} />
+              <FinalMovie
+                finalMovieUrl={
+                  finalMovieUrl
+                }
+              />
             )}
           </>
         )}

@@ -22,6 +22,7 @@ from app.schemas.generation_queue import StartGenerationQueueRequest
 from app.routes import (
     audio,
     auth,
+    exports,
     images,
     live_collaboration,
     movie,
@@ -92,6 +93,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(projects.router)
+app.include_router(exports.router)
 app.include_router(live_collaboration.router)
 app.include_router(notifications.router)
 

@@ -1,48 +1,65 @@
 .app-menu-bar {
-  height: 42px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 18px;
-  background: #181818;
-  border-bottom: 1px solid #2d2d2d;
   position: sticky;
   top: 0;
   z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 42px;
+  padding: 0 18px;
+  background: #181818;
+  border-bottom: 1px solid #2d2d2d;
 }
 
 .app-menu-left {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
 }
 
 .app-logo {
+  flex: 0 0 auto;
   margin-right: 24px;
-  font-weight: 700;
+  color: #ffffff;
   font-size: 0.95rem;
-  color: white;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.app-menu-left button {
+.app-menu-left > button,
+.app-menu-dropdown > button {
+  padding: 6px 10px;
+  color: #cfcfcf;
+  font-size: 0.9rem;
   background: none;
   border: none;
-  color: #cfcfcf;
-  padding: 6px 10px;
   border-radius: 4px;
-  font-size: 0.9rem;
-  transition: 0.15s;
   cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
 }
 
-.app-menu-left button:hover {
+.app-menu-left > button:hover,
+.app-menu-dropdown > button:hover,
+.app-menu-dropdown > button[aria-expanded="true"] {
+  color: #ffffff;
   background: #2f2f2f;
-  color: white;
+}
+
+.app-menu-left > button:focus-visible,
+.app-menu-dropdown > button:focus-visible {
+  outline: 2px solid #7c7cff;
+  outline-offset: 1px;
 }
 
 .app-menu-right {
+  flex: 0 0 auto;
+  margin-left: 18px;
   color: #8e8e8e;
   font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .app-menu-dropdown {
@@ -53,22 +70,110 @@
   position: absolute;
   top: calc(100% + 5px);
   left: 0;
-  min-width: 190px;
+  z-index: 1200;
+  min-width: 210px;
   padding: 6px;
+  overflow: hidden;
   background: #202020;
   border: 1px solid #3a3a3a;
-  border-radius: 6px;
+  border-radius: 7px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
-  z-index: 1200;
+}
+
+.file-menu-dropdown {
+  min-width: 290px;
 }
 
 .app-menu-dropdown-content button {
-  width: 100%;
   display: flex;
   align-items: center;
   gap: 9px;
+  width: 100%;
+  min-height: 36px;
   padding: 9px 10px;
+  color: #d7d7d7;
+  font-size: 0.87rem;
   text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.app-menu-dropdown-content button:hover {
+  color: #ffffff;
+  background: #303030;
+}
+
+.app-menu-dropdown-content button:focus-visible {
+  outline: 2px solid #7c7cff;
+  outline-offset: -2px;
+}
+
+.app-menu-dropdown-content button:disabled {
+  color: #777777;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.app-menu-dropdown-content button:disabled:hover {
+  background: transparent;
+}
+
+.app-menu-dropdown-content button svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+}
+
+.app-menu-item-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-menu-shortcut {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: #858585;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.file-menu-dropdown button:hover .app-menu-shortcut {
+  color: #cfcfcf;
+}
+
+.menu-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: #3a3a3a;
+}
+
+.menu-count-badge {
+  min-width: 20px;
+  margin-left: auto;
+  padding: 1px 6px;
+  color: #ffffff;
+  font-size: 0.72rem;
+  text-align: center;
+  background: #7c4dff;
+  border-radius: 999px;
+}
+
+.menu-status-message {
+  color: #9ce2bd;
+}
+
+.menu-status-error {
+  color: #ffadb7;
+}
+
+.live-active-label {
+  color: #67e8a5;
+  font-weight: 600;
 }
 
 .share-dialog-overlay {
@@ -85,8 +190,8 @@
 .share-dialog {
   width: min(480px, 100%);
   padding: 24px;
-  background: #202020;
   color: #ffffff;
+  background: #202020;
   border: 1px solid #3a3a3a;
   border-radius: 10px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
@@ -121,6 +226,15 @@
   border: 1px solid #555555;
   border-radius: 6px;
   cursor: pointer;
+}
+
+.share-dialog-close:hover {
+  background: #303030;
+}
+
+.share-dialog-close:focus-visible {
+  outline: 2px solid #7c7cff;
+  outline-offset: 2px;
 }
 
 .share-dialog-field {
@@ -174,48 +288,8 @@
   cursor: pointer;
 }
 
-.share-dialog-actions button:hover,
-.share-dialog-close:hover {
+.share-dialog-actions button:hover {
   background: #303030;
-}
-
-@media (max-width: 768px) {
-  .app-menu-bar {
-    padding: 0 10px;
-  }
-
-  .app-logo {
-    margin-right: 10px;
-    font-size: 0.85rem;
-  }
-
-  .app-menu-left {
-    gap: 1px;
-  }
-
-  .app-menu-left button {
-    padding: 6px 7px;
-    font-size: 0.82rem;
-  }
-
-  .app-menu-right {
-    display: none;
-  }
-}
-.menu-count-badge {
-  margin-left: auto;
-  min-width: 20px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: #7c4dff;
-  color: white;
-  font-size: 0.72rem;
-  text-align: center;
-}
-
-.live-active-label {
-  color: #67e8a5;
-  font-weight: 600;
 }
 
 .live-dialog {
@@ -227,21 +301,21 @@
 .dialog-info,
 .dialog-message {
   padding: 12px 14px;
-  border-radius: 7px;
-  background: #292929;
   color: #d2d2d2;
+  background: #292929;
+  border-radius: 7px;
 }
 
 .dialog-error {
+  color: #ffb6bf;
   background: rgba(220, 53, 69, 0.16);
   border: 1px solid rgba(220, 53, 69, 0.5);
-  color: #ffb6bf;
 }
 
 .dialog-success {
+  color: #9ce2bd;
   background: rgba(25, 135, 84, 0.18);
   border: 1px solid rgba(25, 135, 84, 0.5);
-  color: #9ce2bd;
 }
 
 .primary-dialog-button,
@@ -251,11 +325,16 @@
   justify-content: center;
   gap: 8px;
   padding: 9px 14px;
+  color: #ffffff;
+  background: #6548d7;
   border: 1px solid #7559e8;
   border-radius: 6px;
-  background: #6548d7;
-  color: #fff;
   cursor: pointer;
+}
+
+.primary-dialog-button:hover:not(:disabled),
+.accept-button:hover:not(:disabled) {
+  background: #7357e0;
 }
 
 .primary-dialog-button:disabled,
@@ -301,24 +380,40 @@
   align-items: center;
   gap: 6px;
   padding: 7px 10px;
-  border: 1px solid #555;
-  border-radius: 6px;
+  color: #ffffff;
   background: transparent;
-  color: #fff;
+  border: 1px solid #555555;
+  border-radius: 6px;
   cursor: pointer;
+}
+
+.invitation-row button:hover,
+.incoming-invitation-actions button:hover:not(:disabled) {
+  background: #303030;
 }
 
 .status-badge {
   width: fit-content;
   padding: 2px 7px;
-  border-radius: 999px;
   font-size: 0.72rem;
   text-transform: capitalize;
+  border-radius: 999px;
 }
 
-.status-pending { background: #614d14; color: #ffe38f; }
-.status-accepted { background: #174d35; color: #9ce2bd; }
-.status-declined { background: #5b2329; color: #ffb6bf; }
+.status-pending {
+  color: #ffe38f;
+  background: #614d14;
+}
+
+.status-accepted {
+  color: #9ce2bd;
+  background: #174d35;
+}
+
+.status-declined {
+  color: #ffb6bf;
+  background: #5b2329;
+}
 
 .incoming-invitation p,
 .muted-dialog-text {
@@ -333,8 +428,12 @@
 }
 
 .danger-dialog-button {
-  border-color: #8b3540 !important;
   color: #ffadb7 !important;
+  border-color: #8b3540 !important;
+}
+
+.danger-dialog-button:hover {
+  background: rgba(189, 48, 56, 0.18) !important;
 }
 
 .live-search-row {
@@ -354,11 +453,16 @@
   border-radius: 6px;
 }
 
+.search-input-wrapper:focus-within {
+  border-color: #7c7cff;
+  box-shadow: 0 0 0 2px rgba(124, 124, 255, 0.18);
+}
+
 .search-input-wrapper input {
   flex: 1;
   min-width: 0;
   padding: 10px 0;
-  color: #fff;
+  color: #ffffff;
   background: transparent;
   border: 0;
   outline: 0;
@@ -378,22 +482,23 @@
   gap: 12px;
   width: 100%;
   padding: 10px 12px;
-  color: #ddd;
+  color: #dddddd;
   text-align: left;
   background: #171717;
   border: 1px solid #363636;
   border-radius: 7px;
+  cursor: pointer;
 }
 
 .user-search-result:hover,
 .user-search-result.selected {
-  color: #fff;
+  color: #ffffff;
   background: #292947;
   border-color: #7777ff;
 }
 
 .user-search-result small {
-  color: #999;
+  color: #999999;
 }
 
 .participant-row {
@@ -407,7 +512,7 @@
 
 .participant-row select {
   padding: 7px 9px;
-  color: #fff;
+  color: #ffffff;
   background: #151515;
   border: 1px solid #494949;
   border-radius: 6px;
@@ -417,12 +522,12 @@
   display: inline-flex;
   margin-left: 8px;
   padding: 2px 7px;
-  font-size: 0.75rem;
   color: #cfcfff;
+  font-size: 0.75rem;
+  text-transform: capitalize;
   background: #292947;
   border: 1px solid #55558d;
   border-radius: 999px;
-  text-transform: capitalize;
 }
 
 .icon-danger-button {
@@ -435,16 +540,16 @@
   background: transparent;
   border: 1px solid #6b3b3b;
   border-radius: 6px;
+  cursor: pointer;
 }
 
-@media (max-width: 640px) {
-  .live-search-row {
-    grid-template-columns: 1fr;
-  }
+.icon-danger-button:hover:not(:disabled) {
+  background: rgba(189, 48, 56, 0.18);
+}
 
-  .participant-row {
-    grid-template-columns: 1fr;
-  }
+.icon-danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .live-session-status-bar {
@@ -485,7 +590,7 @@
 .confirm-end-live-button {
   flex: 0 0 auto;
   padding: 8px 16px;
-  color: #fff;
+  color: #ffffff;
   font-weight: 700;
   background: #bd3038;
   border: 1px solid #d44750;
@@ -507,9 +612,84 @@
   width: min(430px, 100%);
 }
 
+@media (max-width: 1024px) {
+  .app-logo {
+    margin-right: 12px;
+  }
+
+  .app-menu-left {
+    gap: 1px;
+  }
+
+  .app-menu-left > button,
+  .app-menu-dropdown > button {
+    padding: 6px 7px;
+    font-size: 0.84rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-menu-bar {
+    padding: 0 10px;
+  }
+
+  .app-logo {
+    margin-right: 10px;
+    font-size: 0.85rem;
+  }
+
+  .app-menu-left {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .app-menu-left::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-menu-left > button,
+  .app-menu-dropdown > button {
+    padding: 6px 7px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .app-menu-right {
+    display: none;
+  }
+
+  .file-menu-dropdown {
+    min-width: 260px;
+  }
+}
+
 @media (max-width: 640px) {
+  .live-search-row {
+    grid-template-columns: 1fr;
+  }
+
+  .participant-row {
+    grid-template-columns: 1fr;
+  }
+
+  .incoming-invitation,
+  .invitation-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .incoming-invitation-actions {
+    width: 100%;
+  }
+
+  .incoming-invitation-actions button {
+    justify-content: center;
+    flex: 1;
+  }
+
   .live-session-status-bar {
     align-items: flex-start;
+    flex-direction: column;
   }
 
   .live-session-status-text {
