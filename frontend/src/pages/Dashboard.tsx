@@ -28,6 +28,7 @@ import {
   leaveLiveSession as leaveLiveSessionRequest,
   type CollaborationRole,
 } from "../api/liveCollaborationApi";
+import AIAssistantWidget from "../components/AIAssistantWidget";
 import AppMenuBar from "../components/AppMenuBar";
 import FinalMovie from "../components/FinalMovie";
 import GenerationQueue, {
@@ -1715,6 +1716,151 @@ function Dashboard() {
     }
   }
 
+
+
+  async function handleRegenerateAiScene(
+    sceneId: number
+  ) {
+    const scene = scenes.find(
+      (currentScene) =>
+        currentScene.id === sceneId
+    );
+
+    if (!scene) {
+      throw new Error(
+        `Scene ${sceneId} could not be found.`
+      );
+    }
+
+    try {
+      setGeneratingImageSceneId(sceneId);
+
+      const imageResult =
+        await generateSceneImage({
+          scene_title: scene.title,
+          narration: scene.narration,
+          mood: scene.mood,
+          style,
+        });
+
+      const sceneWithNewImage: Scene = {
+        ...scene,
+        imageUrl: imageResult.image_url,
+        imagePrompt: imageResult.prompt,
+        videoUrl: "",
+      };
+
+      setScenes((currentScenes) =>
+        currentScenes.map(
+          (currentScene) =>
+            currentScene.id === sceneId
+              ? sceneWithNewImage
+              : currentScene
+        )
+      );
+
+      if (!scene.audioUrl) {
+        return;
+      }
+
+      setGeneratingVideoSceneId(sceneId);
+
+      const videoResult =
+        await generateSceneVideo({
+          scene_title: sceneWithNewImage.title,
+          image_url:
+            sceneWithNewImage.imageUrl ?? "",
+          audio_url: scene.audioUrl,
+          scene_length: getSceneSeconds(
+            sceneWithNewImage,
+            sceneLength
+          ),
+          aspect_ratio: aspectRatio,
+        });
+
+      setScenes((currentScenes) =>
+        currentScenes.map(
+          (currentScene) =>
+            currentScene.id === sceneId
+              ? {
+                  ...currentScene,
+                  imageUrl:
+                    imageResult.image_url,
+                  imagePrompt:
+                    imageResult.prompt,
+                  videoUrl:
+                    videoResult.video_url,
+                  videoPrompt:
+                    videoResult.prompt,
+                }
+              : currentScene
+        )
+      );
+    } catch (error) {
+      console.error(
+        `Failed to regenerate Scene ${sceneId}:`,
+        error
+      );
+
+      throw new Error(
+        `Could not regenerate Scene ${sceneId}. Check the backend logs.`
+      );
+    } finally {
+      setGeneratingImageSceneId(null);
+      setGeneratingVideoSceneId(null);
+    }
+  }
+
+  function handleApplyAiChange(
+    proposedProjectData: SavedProjectData
+  ) {
+    const canApplyChanges =
+      activeProject?.role === "owner" ||
+      activeProject?.role === "editor" ||
+      liveRole === "owner" ||
+      liveRole === "editor";
+
+    if (!canApplyChanges) {
+      alert(
+        "You need Owner or Editor access to apply AI changes."
+      );
+      return;
+    }
+
+    clearPendingHistorySnapshot();
+
+    const currentSnapshot =
+      cloneProjectData(currentProjectData);
+
+    undoStackRef.current.push(currentSnapshot);
+
+    if (undoStackRef.current.length > 50) {
+      undoStackRef.current.shift();
+    }
+
+    redoStackRef.current = [];
+
+    isApplyingHistoryRef.current = true;
+
+    const nextProjectData =
+      cloneProjectData(proposedProjectData);
+
+    setMovieTitle(nextProjectData.movieTitle);
+    setMovieIdea(nextProjectData.movieIdea);
+    setScenes(nextProjectData.scenes);
+    setStyle(nextProjectData.style);
+    setSceneLength(nextProjectData.sceneLength);
+    setAspectRatio(nextProjectData.aspectRatio);
+    setFinalMovieUrl(
+      nextProjectData.finalMovieUrl
+    );
+
+    lastHistorySnapshotRef.current =
+      cloneProjectData(nextProjectData);
+
+    updateHistoryAvailability();
+  }
+
   if (isLoadingProjects) {
     return (
       <main className="container py-5">
@@ -2091,6 +2237,26 @@ function Dashboard() {
           </>
         )}
       </main>
+
+      <AIAssistantWidget
+        projectId={activeProjectId}
+        projectName={
+          activeProject?.name ||
+          movieTitle ||
+          "Untitled Project"
+        }
+        projectData={currentProjectData}
+        canApplyChanges={
+          activeProject?.role === "owner" ||
+          activeProject?.role === "editor" ||
+          liveRole === "owner" ||
+          liveRole === "editor"
+        }
+        onApplyChange={handleApplyAiChange}
+        onRegenerateScene={
+          handleRegenerateAiScene
+        }
+      />
     </>
   );
 }
