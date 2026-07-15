@@ -13,7 +13,6 @@ import {
   FiMessageCircle,
   FiMinimize2,
   FiMove,
-  FiRefreshCw,
   FiSend,
   FiTrash2,
   FiX,
@@ -637,8 +636,8 @@ function AIAssistantWidget({
   const panelPosition = useMemo(() => {
     if (typeof window === "undefined") {
       return {
-        left: position.x,
-        top: position.y,
+        x: position.x,
+        y: position.y,
       };
     }
 
