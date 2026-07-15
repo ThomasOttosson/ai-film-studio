@@ -9,6 +9,8 @@ import {
 import {
   cancelGenerationQueue,
   getGenerationQueue,
+  pauseGenerationQueue,
+  resumeGenerationQueue,
   retryFailedGenerationQueue,
   startGenerationQueue,
   type GenerationQueueResponse,
@@ -205,7 +207,13 @@ function Dashboard() {
     QueueStep[]
   >([]);
 
+  const [queueSnapshot, setQueueSnapshot] =
+    useState<GenerationQueueResponse | null>(null);
+
   const [isRunningQueue, setIsRunningQueue] =
+    useState(false);
+
+  const [isPausingQueue, setIsPausingQueue] =
     useState(false);
 
   const [
@@ -401,20 +409,28 @@ function Dashboard() {
     closeQueueSocket();
     setIsRunningQueue(false);
     setIsCancellingQueue(false);
+    setIsPausingQueue(false);
+    setQueueSnapshot(null);
   }
 
   function applyQueueResponse(
     queue: GenerationQueueResponse
   ) {
+    setQueueSnapshot(queue);
     setQueueSteps(queue.steps ?? []);
 
     if (queue.scenes?.length > 0) {
       setScenes(queue.scenes);
     }
 
-    if (isTerminalQueueStatus(queue.status)) {
+    const isPaused = queue.status === "paused";
+
+    if (isTerminalQueueStatus(queue.status) || isPaused) {
       setIsRunningQueue(false);
       setIsCancellingQueue(false);
+      setIsPausingQueue(false);
+    } else {
+      setIsRunningQueue(true);
     }
   }
 
@@ -448,17 +464,12 @@ function Dashboard() {
           return false;
         }
 
-        setQueueSteps(queue.steps ?? []);
-
-        if (queue.scenes?.length > 0) {
-          setScenes(queue.scenes);
-        }
+        applyQueueResponse(queue);
 
         if (
-          isTerminalQueueStatus(queue.status)
+          isTerminalQueueStatus(queue.status) ||
+          queue.status === "paused"
         ) {
-          setIsRunningQueue(false);
-          setIsCancellingQueue(false);
           return false;
         }
 
@@ -527,18 +538,7 @@ function Dashboard() {
         return;
       }
 
-      setQueueSteps(batch.steps ?? []);
-
-      if (batch.scenes?.length > 0) {
-        setScenes(batch.scenes);
-      }
-
-      if (
-        isTerminalQueueStatus(batch.status)
-      ) {
-        setIsRunningQueue(false);
-        setIsCancellingQueue(false);
-      }
+      applyQueueResponse(batch);
     }
 
     function openSocket() {
@@ -982,7 +982,9 @@ function Dashboard() {
 
     closeQueueSocket();
     setQueueSteps([]);
+    setQueueSnapshot(null);
     setIsCancellingQueue(false);
+    setIsPausingQueue(false);
     setActiveQueueBatchId(null);
   }
 
@@ -1329,6 +1331,37 @@ function Dashboard() {
     }
   }
 
+  async function handlePauseQueue() {
+    if (!activeQueueBatchId || !isRunningQueue || isPausingQueue) {
+      return;
+    }
+
+    try {
+      setIsPausingQueue(true);
+      const pausedQueue = await pauseGenerationQueue(activeQueueBatchId);
+      applyQueueResponse(pausedQueue);
+    } catch (error) {
+      console.error("Failed to pause queue:", error);
+      alert("Could not pause the render queue.");
+      setIsPausingQueue(false);
+    }
+  }
+
+  async function handleResumeQueue() {
+    if (!activeQueueBatchId || queueSnapshot?.status !== "paused") {
+      return;
+    }
+
+    try {
+      const resumedQueue = await resumeGenerationQueue(activeQueueBatchId);
+      applyQueueResponse(resumedQueue);
+      setIsRunningQueue(true);
+    } catch (error) {
+      console.error("Failed to resume queue:", error);
+      alert("Could not resume the render queue.");
+    }
+  }
+
   async function handleCancelQueue() {
     if (
       !activeQueueBatchId ||
@@ -1376,28 +1409,8 @@ function Dashboard() {
           activeQueueBatchId
         );
 
-      setQueueSteps(
-        retriedQueue.steps ?? []
-      );
-
-      if (
-        retriedQueue.scenes?.length > 0
-      ) {
-        setScenes(retriedQueue.scenes);
-      }
-
-      if (
-        isTerminalQueueStatus(
-          retriedQueue.status
-        )
-      ) {
-        setIsRunningQueue(false);
-        setIsCancellingQueue(false);
-        return;
-      }
-
+      applyQueueResponse(retriedQueue);
       setIsCancellingQueue(false);
-      setIsRunningQueue(true);
     } catch (error) {
       console.error(
         "Failed to retry failed queue:",
@@ -1453,10 +1466,7 @@ function Dashboard() {
 
       setActiveQueueBatchId(batchId);
 
-      setQueueSteps(
-        startedQueue.steps ?? []
-      );
-
+      applyQueueResponse(startedQueue);
       setIsRunningQueue(true);
     } catch (error) {
       console.error(
@@ -1779,10 +1789,17 @@ function Dashboard() {
               isRunning={
                 isRunningQueue
               }
+              queueStatus={queueSnapshot?.status ?? null}
               isCancelling={
                 isCancellingQueue
               }
+              isPausing={isPausingQueue}
               queueSteps={queueSteps}
+              progressPercent={queueSnapshot?.progressPercent}
+              estimatedRemainingSeconds={
+                queueSnapshot?.estimatedRemainingSeconds
+              }
+              currentStep={queueSnapshot?.currentStep}
               onGenerateAll={
                 handleGenerateAllMedia
               }
@@ -1792,6 +1809,8 @@ function Dashboard() {
               onCancelQueue={
                 handleCancelQueue
               }
+              onPauseQueue={handlePauseQueue}
+              onResumeQueue={handleResumeQueue}
               onRetryFailed={
                 handleRetryFailedQueue
               }

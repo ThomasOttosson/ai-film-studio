@@ -36,6 +36,8 @@ from generation_queue import (
     enqueue_generation_batch,
     get_generation_batch,
     request_cancel_generation_batch,
+    request_pause_generation_batch,
+    resume_generation_batch,
     retry_failed_generation_batch,
 )
 from live_collaboration_manager import live_collaboration_manager
@@ -180,12 +182,7 @@ async def start_generation_queue(
 
     enqueue_generation_batch(batch["id"])
 
-    return {
-        "batch_id": batch["id"],
-        "status": batch["status"],
-        "steps": batch["steps"],
-        "scenes": batch["scenes"],
-    }
+    return batch
 
 
 def owned_generation_batch(
@@ -229,16 +226,45 @@ def cancel_generation_queue(
             detail="Generation batch not found",
         )
 
-    return {
-        "batch_id": batch["id"],
-        "status": batch["status"],
-        "cancel_requested": batch.get(
-            "cancel_requested",
-            False,
-        ),
-        "steps": batch["steps"],
-        "scenes": batch["scenes"],
-    }
+    return batch
+
+
+@app.post(
+    "/api/generation-queue/{batch_id}/pause",
+)
+def pause_generation_queue(
+    batch_id: str,
+    user: User = Depends(get_current_user),
+):
+    owned_generation_batch(batch_id, user)
+    batch = request_pause_generation_batch(batch_id)
+
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Generation batch not found",
+        )
+
+    return batch
+
+
+@app.post(
+    "/api/generation-queue/{batch_id}/resume",
+)
+def resume_generation_queue(
+    batch_id: str,
+    user: User = Depends(get_current_user),
+):
+    owned_generation_batch(batch_id, user)
+    batch = resume_generation_batch(batch_id)
+
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Generation batch not found",
+        )
+
+    return batch
 
 
 @app.post(
@@ -257,16 +283,7 @@ def retry_failed_generation_queue(
             detail="Generation batch not found",
         )
 
-    return {
-        "batch_id": batch["id"],
-        "status": batch["status"],
-        "cancel_requested": batch.get(
-            "cancel_requested",
-            False,
-        ),
-        "steps": batch["steps"],
-        "scenes": batch["scenes"],
-    }
+    return batch
 
 
 @app.websocket(
