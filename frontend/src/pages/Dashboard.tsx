@@ -85,6 +85,25 @@ function isTerminalQueueStatus(status: string) {
   ].includes(status);
 }
 
+
+function cloneProjectData(
+  projectData: SavedProjectData
+): SavedProjectData {
+  return JSON.parse(
+    JSON.stringify(projectData)
+  ) as SavedProjectData;
+}
+
+function areProjectSnapshotsEqual(
+  firstSnapshot: SavedProjectData,
+  secondSnapshot: SavedProjectData
+) {
+  return (
+    JSON.stringify(firstSnapshot) ===
+    JSON.stringify(secondSnapshot)
+  );
+}
+
 function Dashboard() {
   const initialProject: StoredProject = {
     id: "",
@@ -96,6 +115,12 @@ function Dashboard() {
 
   const projectsLoadedRef = useRef(false);
   const saveTimeoutRef = useRef<number | null>(null);
+  const historyTimeoutRef = useRef<number | null>(null);
+  const undoStackRef = useRef<SavedProjectData[]>([]);
+  const redoStackRef = useRef<SavedProjectData[]>([]);
+  const lastHistorySnapshotRef =
+    useRef<SavedProjectData | null>(null);
+  const isApplyingHistoryRef = useRef(false);
 
   const queueSocketRef = useRef<ReturnType<
     typeof connectGenerationQueueSocket
@@ -234,6 +259,9 @@ function Dashboard() {
   const [finalMovieUrl, setFinalMovieUrl] =
     useState(initialProject.data.finalMovieUrl);
 
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
   const currentProjectData: SavedProjectData = {
     movieTitle,
     movieIdea,
@@ -247,6 +275,91 @@ function Dashboard() {
   const activeProject = projects.find(
     (project) => project.id === activeProjectId
   );
+
+  function updateHistoryAvailability() {
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(redoStackRef.current.length > 0);
+  }
+
+  function clearPendingHistorySnapshot() {
+    if (historyTimeoutRef.current !== null) {
+      window.clearTimeout(historyTimeoutRef.current);
+      historyTimeoutRef.current = null;
+    }
+  }
+
+  function resetProjectHistory(
+    projectData: SavedProjectData
+  ) {
+    clearPendingHistorySnapshot();
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    lastHistorySnapshotRef.current =
+      cloneProjectData(projectData);
+    isApplyingHistoryRef.current = false;
+    updateHistoryAvailability();
+  }
+
+  function applyProjectSnapshot(
+    projectData: SavedProjectData
+  ) {
+    isApplyingHistoryRef.current = true;
+
+    setMovieTitle(projectData.movieTitle);
+    setMovieIdea(projectData.movieIdea);
+    setScenes(cloneProjectData(projectData).scenes);
+    setStyle(projectData.style);
+    setSceneLength(projectData.sceneLength);
+    setAspectRatio(projectData.aspectRatio);
+    setFinalMovieUrl(projectData.finalMovieUrl);
+
+    lastHistorySnapshotRef.current =
+      cloneProjectData(projectData);
+  }
+
+  function handleUndo() {
+    const previousSnapshot =
+      undoStackRef.current.pop();
+
+    if (!previousSnapshot) {
+      return;
+    }
+
+    clearPendingHistorySnapshot();
+
+    const currentSnapshot =
+      lastHistorySnapshotRef.current ??
+      currentProjectData;
+
+    redoStackRef.current.push(
+      cloneProjectData(currentSnapshot)
+    );
+
+    applyProjectSnapshot(previousSnapshot);
+    updateHistoryAvailability();
+  }
+
+  function handleRedo() {
+    const nextSnapshot =
+      redoStackRef.current.pop();
+
+    if (!nextSnapshot) {
+      return;
+    }
+
+    clearPendingHistorySnapshot();
+
+    const currentSnapshot =
+      lastHistorySnapshotRef.current ??
+      currentProjectData;
+
+    undoStackRef.current.push(
+      cloneProjectData(currentSnapshot)
+    );
+
+    applyProjectSnapshot(nextSnapshot);
+    updateHistoryAvailability();
+  }
 
   async function handleManualSaveProject() {
     if (!activeProjectId) {
@@ -729,6 +842,10 @@ function Dashboard() {
             setLastLiveUpdatedBy(
               message.updatedBy
             );
+
+            resetProjectHistory(
+              message.data
+            );
           }
         },
 
@@ -801,6 +918,8 @@ function Dashboard() {
       project.data.finalMovieUrl
     );
 
+    resetProjectHistory(project.data);
+
     setGeneratingImageSceneId(null);
     setGeneratingAudioSceneId(null);
     setGeneratingVideoSceneId(null);
@@ -871,6 +990,75 @@ function Dashboard() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      !projectsLoadedRef.current ||
+      !activeProjectId ||
+      !lastHistorySnapshotRef.current
+    ) {
+      return;
+    }
+
+    if (isApplyingHistoryRef.current) {
+      isApplyingHistoryRef.current = false;
+      lastHistorySnapshotRef.current =
+        cloneProjectData(currentProjectData);
+      return;
+    }
+
+    if (applyingRemoteUpdateRef.current) {
+      return;
+    }
+
+    clearPendingHistorySnapshot();
+
+    historyTimeoutRef.current =
+      window.setTimeout(() => {
+        const previousSnapshot =
+          lastHistorySnapshotRef.current;
+
+        const nextSnapshot =
+          cloneProjectData(currentProjectData);
+
+        if (
+          !previousSnapshot ||
+          areProjectSnapshotsEqual(
+            previousSnapshot,
+            nextSnapshot
+          )
+        ) {
+          return;
+        }
+
+        undoStackRef.current.push(
+          cloneProjectData(previousSnapshot)
+        );
+
+        if (undoStackRef.current.length > 50) {
+          undoStackRef.current.shift();
+        }
+
+        redoStackRef.current = [];
+        lastHistorySnapshotRef.current =
+          nextSnapshot;
+
+        updateHistoryAvailability();
+      }, 400);
+
+    return () => {
+      clearPendingHistorySnapshot();
+    };
+  }, [
+    activeProjectId,
+    movieTitle,
+    movieIdea,
+    scenes,
+    style,
+    sceneLength,
+    aspectRatio,
+    finalMovieUrl,
+  ]);
 
   useEffect(() => {
     if (
@@ -1570,6 +1758,10 @@ function Dashboard() {
         onLeaveLiveSession={
           leaveLiveSession
         }
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
       />
 
       {activeLiveSessionId && (

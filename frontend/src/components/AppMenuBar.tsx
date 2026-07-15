@@ -12,6 +12,8 @@ import {
   FiFileText,
   FiFilm,
   FiRadio,
+  FiRotateCcw,
+  FiRotateCw,
   FiSave,
   FiSearch,
   FiShare2,
@@ -50,6 +52,10 @@ interface AppMenuBarProps {
   activeProjectData: SavedProjectData;
   activeLiveSessionId: string | null;
   onSaveProject: () => Promise<void>;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   onJoinLiveSession: (sessionId: string) => void;
   onLeaveLiveSession: () => void;
 }
@@ -346,12 +352,17 @@ function AppMenuBar({
   activeProjectData,
   activeLiveSessionId,
   onSaveProject,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
   onJoinLiveSession,
   onLeaveLiveSession,
 }: AppMenuBarProps) {
   const { user } = useAuth();
 
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  const [editMenuOpen, setEditMenuOpen] = useState(false);
   const [projectMenuOpen, setProjectMenuOpen] =
     useState(false);
 
@@ -413,6 +424,7 @@ function AppMenuBar({
 
   const closeMenus = useCallback(() => {
     setFileMenuOpen(false);
+    setEditMenuOpen(false);
     setProjectMenuOpen(false);
   }, []);
 
@@ -498,6 +510,7 @@ function AppMenuBar({
 
   useEffect(() => {
     setFileMenuOpen(false);
+    setEditMenuOpen(false);
     setProjectMenuOpen(false);
     setSession(null);
     setSearchQuery("");
@@ -553,16 +566,51 @@ function AppMenuBar({
     function handleKeyboardShortcut(
       event: KeyboardEvent
     ) {
-      const isSaveShortcut =
-        (event.ctrlKey || event.metaKey) &&
-        event.key.toLowerCase() === "s";
+      const hasCommandKey =
+        event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
 
-      if (!isSaveShortcut) {
+      if (!hasCommandKey) {
+        return;
+      }
+
+      const target = event.target;
+
+      const isEditingText =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement &&
+          target.isContentEditable);
+
+      if (key === "s") {
+        event.preventDefault();
+        void handleSaveProject();
+        return;
+      }
+
+      if (isEditingText || key !== "z") {
+        return;
+      }
+
+      if (event.shiftKey) {
+        if (!canRedo) {
+          return;
+        }
+
+        event.preventDefault();
+        closeMenus();
+        onRedo();
+        return;
+      }
+
+      if (!canUndo) {
         return;
       }
 
       event.preventDefault();
-      void handleSaveProject();
+      closeMenus();
+      onUndo();
     }
 
     window.addEventListener(
@@ -576,7 +624,14 @@ function AppMenuBar({
         handleKeyboardShortcut
       );
     };
-  }, [handleSaveProject]);
+  }, [
+    canRedo,
+    canUndo,
+    closeMenus,
+    handleSaveProject,
+    onRedo,
+    onUndo,
+  ]);
 
   async function refreshSession() {
     if (!activeProjectId) {
@@ -594,13 +649,22 @@ function AppMenuBar({
   }
 
   function handleFileMenuToggle() {
+    setEditMenuOpen(false);
     setProjectMenuOpen(false);
 
     setFileMenuOpen((current) => !current);
   }
 
+  function handleEditMenuToggle() {
+    setFileMenuOpen(false);
+    setProjectMenuOpen(false);
+
+    setEditMenuOpen((current) => !current);
+  }
+
   function handleProjectMenuToggle() {
     setFileMenuOpen(false);
+    setEditMenuOpen(false);
 
     setProjectMenuOpen((current) => !current);
   }
@@ -1153,9 +1217,73 @@ function AppMenuBar({
             )}
           </div>
 
-          <button type="button">
-            Edit
-          </button>
+          <div className="app-menu-dropdown">
+            <button
+              type="button"
+              onClick={handleEditMenuToggle}
+              aria-expanded={editMenuOpen}
+              aria-haspopup="menu"
+            >
+              Edit
+            </button>
+
+            {editMenuOpen && (
+              <div
+                className="app-menu-dropdown-content edit-menu-dropdown"
+                role="menu"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    closeMenus();
+                    onUndo();
+                  }}
+                  disabled={!canUndo}
+                  title={
+                    canUndo
+                      ? "Undo the last project change"
+                      : "Nothing to undo"
+                  }
+                >
+                  <FiRotateCcw />
+
+                  <span className="app-menu-item-label">
+                    Undo
+                  </span>
+
+                  <span className="app-menu-shortcut">
+                    Ctrl+Z
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    closeMenus();
+                    onRedo();
+                  }}
+                  disabled={!canRedo}
+                  title={
+                    canRedo
+                      ? "Redo the last undone project change"
+                      : "Nothing to redo"
+                  }
+                >
+                  <FiRotateCw />
+
+                  <span className="app-menu-item-label">
+                    Redo
+                  </span>
+
+                  <span className="app-menu-shortcut">
+                    Ctrl+Shift+Z
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="app-menu-dropdown">
             <button
