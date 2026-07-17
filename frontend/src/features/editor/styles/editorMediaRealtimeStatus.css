@@ -1,0 +1,79 @@
+/**
+ * Placement:
+ * frontend/src/features/editor/styles/editorMediaRealtimeStatus.css
+ */
+
+.editor-media-realtime-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--editor-border-color, #d0d5dd);
+  border-radius: 0.5rem;
+  background: var(--editor-surface-color, #ffffff);
+  color: var(--editor-text-color, #344054);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.editor-media-realtime-status__indicator {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+.editor-media-realtime-status__message {
+  min-width: 0;
+}
+
+.editor-media-realtime-status--connecting {
+  color: var(--editor-status-warning-color, #b54708);
+  background: var(--editor-status-warning-background, #fffaeb);
+  border-color: var(--editor-status-warning-border, #fedf89);
+}
+
+.editor-media-realtime-status--connecting
+  .editor-media-realtime-status__indicator {
+  animation: editor-media-realtime-pulse 1.25s ease-in-out infinite;
+}
+
+.editor-media-realtime-status--open {
+  color: var(--editor-status-success-color, #027a48);
+  background: var(--editor-status-success-background, #ecfdf3);
+  border-color: var(--editor-status-success-border, #abefc6);
+}
+
+.editor-media-realtime-status--closed {
+  color: var(--editor-status-muted-color, #475467);
+  background: var(--editor-status-muted-background, #f9fafb);
+  border-color: var(--editor-status-muted-border, #eaecf0);
+}
+
+.editor-media-realtime-status--error {
+  color: var(--editor-status-error-color, #b42318);
+  background: var(--editor-status-error-background, #fef3f2);
+  border-color: var(--editor-status-error-border, #fecdca);
+}
+
+@keyframes editor-media-realtime-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-media-realtime-status--connecting
+    .editor-media-realtime-status__indicator {
+    animation: none;
+  }
+}

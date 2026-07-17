@@ -1,0 +1,30 @@
+/**
+ * Placement:
+ * frontend/src/features/editor/styles/editorMediaConnectionBanner.css
+ */
+
+.editor-media-connection-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--editor-border-color, #eaecf0);
+  background: var(--editor-surface-subtle-color, #f9fafb);
+}
+
+.editor-media-connection-banner
+  .editor-media-realtime-status {
+  max-width: min(100%, 42rem);
+}
+
+@media (max-width: 40rem) {
+  .editor-media-connection-banner {
+    justify-content: stretch;
+  }
+
+  .editor-media-connection-banner
+    .editor-media-realtime-status {
+    width: 100%;
+  }
+}

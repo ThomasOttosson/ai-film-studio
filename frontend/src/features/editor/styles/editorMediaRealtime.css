@@ -1,0 +1,13 @@
+/**
+ * Realtime editor media styles entrypoint.
+ *
+ * Placement:
+ * frontend/src/features/editor/styles/editorMediaRealtime.css
+ */
+
+@import "./editorMediaRealtimeStatus.css";
+@import "./editorMediaConnectionBanner.css";
+@import "./editorMediaRealtimeBoundary.css";
+@import "./realtimeEditorMediaWorkspace.css";
+@import "./editorMediaRealtimeErrorFallback.css";
+@import "./editorMediaRealtimeLoadingFallback.css";

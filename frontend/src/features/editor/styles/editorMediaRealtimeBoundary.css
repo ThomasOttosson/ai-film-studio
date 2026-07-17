@@ -1,0 +1,38 @@
+/**
+ * Placement:
+ * frontend/src/features/editor/styles/editorMediaRealtimeBoundary.css
+ */
+
+.editor-media-realtime-boundary {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.editor-media-realtime-boundary__content {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.editor-media-realtime-boundary--connecting
+  .editor-media-realtime-boundary__content,
+.editor-media-realtime-boundary--closed
+  .editor-media-realtime-boundary__content {
+  opacity: 0.92;
+}
+
+.editor-media-realtime-boundary--error
+  .editor-media-realtime-boundary__content {
+  min-height: 12rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .editor-media-realtime-boundary__content {
+    transition: opacity 160ms ease;
+  }
+}

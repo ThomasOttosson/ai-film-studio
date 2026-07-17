@@ -1,0 +1,33 @@
+/**
+ * Placement:
+ * frontend/src/features/editor/styles/realtimeEditorMediaWorkspace.css
+ */
+
+.realtime-editor-media-workspace {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.realtime-editor-media-workspace
+  > .editor-media-realtime-boundary {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.realtime-editor-media-workspace
+  .editor-media-workspace {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.realtime-editor-media-workspace[data-realtime-status="connecting"],
+.realtime-editor-media-workspace[data-realtime-status="closed"] {
+  cursor: progress;
+}
+
+.realtime-editor-media-workspace[data-realtime-status="error"] {
+  cursor: default;
+}

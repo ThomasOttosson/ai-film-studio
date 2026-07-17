@@ -1,7 +1,12 @@
 import Navbar from "./components/Navbar";
 import { useAuth } from "./auth/AuthContext";
 import AuthPage from "./pages/AuthPage";
-import Dashboard from "./pages/Dashboard";
+
+import { AIActionProvider } from "./features/ai/AIActionProvider";
+import { AIActionResultBridge } from "./features/ai/AIActionResultBridge";
+import { AIActionStatusPanel } from "./features/ai/AIActionStatusPanel";
+
+import { AppRouter } from "./app/router";
 
 function App() {
   const { user, isLoading } = useAuth();
@@ -23,10 +28,16 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
-      <Navbar />
-      <Dashboard />
-    </div>
+    <AIActionProvider>
+      <AIActionResultBridge />
+
+      <div className="app-shell">
+        <Navbar />
+        <AppRouter />
+      </div>
+
+      <AIActionStatusPanel />
+    </AIActionProvider>
   );
 }
 

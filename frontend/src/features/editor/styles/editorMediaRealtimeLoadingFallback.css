@@ -1,0 +1,45 @@
+/**
+ * Placement:
+ * frontend/src/features/editor/styles/editorMediaRealtimeLoadingFallback.css
+ */
+
+.editor-media-realtime-loading-fallback {
+  display: flex;
+  min-height: 8rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  color: var(--editor-text-muted-color, #475467);
+  background: var(--editor-surface-subtle-color, #f9fafb);
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+}
+
+.editor-media-realtime-loading-fallback__spinner {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: editor-media-realtime-loading-spin 700ms linear infinite;
+}
+
+.editor-media-realtime-loading-fallback__label {
+  min-width: 0;
+}
+
+@keyframes editor-media-realtime-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-media-realtime-loading-fallback__spinner {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.55;
+  }
+}

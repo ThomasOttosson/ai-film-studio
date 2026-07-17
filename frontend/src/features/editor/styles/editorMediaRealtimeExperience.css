@@ -1,0 +1,14 @@
+/**
+ * Supplemental styles for the composed editor media realtime experience.
+ *
+ * Import this alongside the existing editorMediaRealtime.css entrypoint.
+ *
+ * Placement:
+ * frontend/src/features/editor/styles/editorMediaRealtimeExperience.css
+ */
+
+@import "./editorMediaRealtimeJobActivity.css";
+@import "./editorMediaRealtimeProgress.css";
+@import "./editorMediaRealtimeConnectionStatus.css";
+@import "./editorMediaRealtimeToolbar.css";
+@import "./editorMediaRealtimeShell.css";

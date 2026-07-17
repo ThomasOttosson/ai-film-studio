@@ -1,0 +1,72 @@
+/**
+ * Styles for EditorMediaRealtimeConnectionStatus.
+ *
+ * Placement:
+ * frontend/src/features/editor/styles/editorMediaRealtimeConnectionStatus.css
+ */
+
+.editor-media-realtime-connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  color: var(--editor-muted-text-color, rgba(255, 255, 255, 0.68));
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.editor-media-realtime-connection-status__indicator {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 0.1875rem color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.editor-media-realtime-connection-status__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-media-realtime-connection-status[data-status="connected"] {
+  color: var(--editor-success-color, #6fdc8c);
+}
+
+.editor-media-realtime-connection-status[data-status="connecting"] {
+  color: var(--editor-warning-color, #f6c85f);
+}
+
+.editor-media-realtime-connection-status[data-status="disconnected"] {
+  color: var(--editor-muted-text-color, rgba(255, 255, 255, 0.58));
+}
+
+.editor-media-realtime-connection-status[data-status="error"] {
+  color: var(--editor-error-color, #ff7a7a);
+}
+
+.editor-media-realtime-connection-status[data-status="connecting"]
+  .editor-media-realtime-connection-status__indicator {
+  animation: editor-media-realtime-connection-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes editor-media-realtime-connection-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-media-realtime-connection-status[data-status="connecting"]
+    .editor-media-realtime-connection-status__indicator {
+    animation: none;
+  }
+}

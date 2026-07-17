@@ -1,0 +1,60 @@
+/**
+ * Styles for EditorMediaRealtimeShell.
+ *
+ * Placement:
+ * frontend/src/features/editor/styles/editorMediaRealtimeShell.css
+ */
+
+.editor-media-realtime-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-media-realtime-shell__content {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--editor-border-color, rgba(255, 255, 255, 0.12));
+  border-radius: 1rem;
+  background: var(--editor-workspace-background, #111216);
+}
+
+.editor-media-realtime-shell[data-realtime-enabled="false"]
+  .editor-media-realtime-toolbar {
+  opacity: 0.72;
+}
+
+.editor-media-realtime-shell[data-realtime-enabled="false"]
+  .editor-media-realtime-shell__content::after {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: color-mix(
+    in srgb,
+    var(--editor-workspace-background, #111216) 74%,
+    transparent
+  );
+  color: var(--editor-muted-text-color, rgba(255, 255, 255, 0.68));
+  content: "Realtime updates are disabled";
+  font-size: 0.8125rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (max-width: 48rem) {
+  .editor-media-realtime-shell {
+    gap: 0.625rem;
+  }
+
+  .editor-media-realtime-shell__content {
+    border-radius: 0.75rem;
+  }
+}
