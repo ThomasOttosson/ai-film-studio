@@ -35,8 +35,6 @@ jobs:
       CI: "true"
       NODE_ENV: test
       REDIS_URL: redis://127.0.0.1:6379
-      BASE_URL: http://127.0.0.1:3000
-      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
 
     steps:
       - name: Checkout code
@@ -53,16 +51,22 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Verify Playwright installation
+        working-directory: frontend
+        run: npm ls @playwright/test
+
       - name: Install Playwright browser
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: npx --no-install playwright install --with-deps chromium
 
       - name: Run Playwright tests
         working-directory: frontend
-        run: npx playwright test
         env:
+          CI: "true"
+          NODE_ENV: test
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npx --no-install playwright test --project=chromium
 
       - name: Upload Playwright report
         if: always()
