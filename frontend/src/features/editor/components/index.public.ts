@@ -16,4 +16,4 @@ export * from "./EditorMediaRealtimeProgress";
 export * from "./EditorMediaRealtimeShell";
 export * from "./EditorMediaRealtimeToolbar";
 export * from "./EditorMediaRealtimeWorkspaceEnhancer";
-export * from "./EditorMediaRealtimeStoreProvider";
+export * from "../realtime/EditorMediaRealtimeStoreProvider";

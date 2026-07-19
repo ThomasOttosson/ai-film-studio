@@ -24,3 +24,4 @@ export * from "./useEditorMediaRealtimeSelectors";
 export * from "./useEditorMediaRealtimeState";
 export * from "./useEditorMediaRealtimeSubscription";
 export * from "./useEditorMediaRealtimeTypedSubscription";
+export * from "../realtime/EditorMediaRealtimeStoreProvider";

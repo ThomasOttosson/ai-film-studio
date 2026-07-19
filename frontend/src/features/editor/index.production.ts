@@ -7,3 +7,4 @@
 
 export * from "./editor.public";
 export * from "./production";
+export * from "./release";
