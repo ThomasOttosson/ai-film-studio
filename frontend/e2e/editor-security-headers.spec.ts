@@ -33,11 +33,15 @@ test.describe("editor security headers", () => {
     expect(response).not.toBeNull();
 
     const headers = response?.headers() ?? {};
+    const serverHeader = headers["server"];
 
     expect(headers["x-powered-by"]).toBeUndefined();
-    expect(headers["server"]).not.toMatch(
-      /express|next\.js|nginx\/\d|apache\/\d|iis\/\d/i,
-    );
+
+    if (serverHeader) {
+      expect(serverHeader).not.toMatch(
+        /express|next\.js|nginx\/\d|apache\/\d|iis\/\d/i,
+      );
+    }
   });
 
   test("uses a restrictive content security policy when configured", async ({
