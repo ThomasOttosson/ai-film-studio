@@ -1,40 +1,43 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-test.describe("editor visual regression", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto("/", {
-      waitUntil: "networkidle",
-    });
+async function prepareEditor(page: Page): Promise<void> {
+  await page.emulateMedia({ reducedMotion: "reduce" });
 
-    await page.emulateMedia({
-      reducedMotion: "reduce",
-    });
-
-    await page.addStyleTag({
-      content: `
-        *,
-        *::before,
-        *::after {
-          animation-duration: 0s !important;
-          animation-delay: 0s !important;
-          transition-duration: 0s !important;
-          caret-color: transparent !important;
-        }
-      `,
-    });
+  await page.goto("/", {
+    waitUntil: "networkidle",
   });
 
+  await page.addStyleTag({
+    content: `
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+        transition-duration: 0s !important;
+        caret-color: transparent !important;
+      }
+    `,
+  });
+
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+
+  const editorRoot = page.locator(
+    '[data-testid="editor"], [data-editor-root], main',
+  );
+  await expect(editorRoot.first()).toBeVisible();
+}
+
+test.describe("editor visual regression", () => {
   test("matches the desktop editor baseline", async ({ page }) => {
     await page.setViewportSize({
       width: 1440,
       height: 900,
     });
 
-    const editorRoot = page.locator(
-      '[data-testid="editor"], [data-editor-root], main',
-    );
-
-    await expect(editorRoot.first()).toBeVisible();
+    await prepareEditor(page);
 
     await expect(page).toHaveScreenshot("editor-desktop.png", {
       animations: "disabled",
@@ -49,11 +52,7 @@ test.describe("editor visual regression", () => {
       height: 844,
     });
 
-    const editorRoot = page.locator(
-      '[data-testid="editor"], [data-editor-root], main',
-    );
-
-    await expect(editorRoot.first()).toBeVisible();
+    await prepareEditor(page);
 
     await expect(page).toHaveScreenshot("editor-mobile.png", {
       animations: "disabled",
