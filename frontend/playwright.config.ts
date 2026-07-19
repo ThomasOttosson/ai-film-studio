@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:4173";
+const baseURL =
+  process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:4173";
+
 const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
@@ -9,15 +11,18 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
   workers: isCI ? 1 : undefined,
+
   reporter: isCI
     ? [["github"], ["html", { open: "never" }]]
     : [["list"], ["html", { open: "on-failure" }]],
+
   use: {
     baseURL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
+
   projects: [
     {
       name: "chromium",
@@ -32,13 +37,14 @@ export default defineConfig({
       use: { ...devices["Desktop Safari"] },
     },
   ],
-  webServer: process.env.PLAYWRIGHT_BASE_URL
-    ? undefined
-    : {
-        command: "npm run build && npm run preview -- --host 127.0.0.1",
-        url: baseURL,
-        reuseExistingServer: !isCI,
-        timeout: 120_000,
-      },
+
+  webServer: {
+    command:
+      "npm run build && npm run preview -- --host 127.0.0.1 --port 4173",
+    url: "http://127.0.0.1:4173",
+    reuseExistingServer: !isCI,
+    timeout: 120_000,
+  },
+
   outputDir: "test-results/playwright",
 });
