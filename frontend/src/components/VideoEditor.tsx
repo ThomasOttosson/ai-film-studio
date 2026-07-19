@@ -606,6 +606,9 @@ export default function VideoEditor({
       action: mapPanelAction(request.actionId),
       clip: {
         ...request.scene,
+        duration: request.scene.duration
+          ? Number(String(request.scene.duration).replace(/[^0-9.]/g, "")) || undefined
+          : undefined,
         id: String(request.scene.id),
         type: request.scene.videoUrl
           ? "video"

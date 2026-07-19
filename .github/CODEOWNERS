@@ -1,0 +1,20 @@
+# Define repository code owners.
+# Replace the example usernames below with your actual GitHub usernames or teams.
+
+# Global owners
+* @your-org/core-team
+
+# Frontend
+/frontend/ @your-org/frontend-team
+
+# Backend
+/backend/ @your-org/backend-team
+
+# CI/CD
+/.github/ @your-org/devops-team
+
+# Load tests
+/load/ @your-org/performance-team
+
+# Documentation
+/docs/ @your-org/core-team

@@ -1,0 +1,97 @@
+name: Bug report
+description: Report a reproducible problem in AI Film Studio
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve AI Film Studio. Please provide enough detail to reproduce the issue.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Problem summary
+      description: Briefly describe what went wrong.
+      placeholder: Describe the issue in one or two sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps that consistently trigger the issue.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Click ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: What happened instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Editor
+        - Realtime collaboration
+        - Media upload or processing
+        - Rendering or export
+        - Authentication
+        - Backend API
+        - Deployment or infrastructure
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Add the release version or commit SHA when known.
+      placeholder: v1.0.0 or abc1234
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include browser, operating system, device, and deployment environment.
+      placeholder: Chrome 126, macOS 14, production
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, screenshots, or recordings
+      description: Remove secrets, tokens, personal data, and private media before posting.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checklist
+      options:
+        - label: I searched existing issues for duplicates.
+          required: true
+        - label: I removed secrets and sensitive information.
+          required: true
+        - label: I can reproduce this issue with the steps above.
+          required: true

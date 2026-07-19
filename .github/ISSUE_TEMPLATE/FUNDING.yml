@@ -1,0 +1,15 @@
+# Repository funding configuration
+#
+# Replace the placeholder values with your own accounts.
+
+github: []
+patreon:
+open_collective:
+ko_fi:
+tidelift:
+community_bridge:
+liberapay:
+issuehunt:
+otechie:
+custom:
+  - https://your-project-website.example/support

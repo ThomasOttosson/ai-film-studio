@@ -1,0 +1,76 @@
+name: Load Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Target application base URL
+        required: true
+        type: string
+      request_rate:
+        description: Requests per second for queue load test
+        required: false
+        default: "25"
+        type: string
+      duration:
+        description: Test duration
+        required: false
+        default: "5m"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-tests-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  k6:
+    name: k6 Production Load Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      BASE_URL: ${{ inputs.base_url }}
+      REQUEST_RATE: ${{ inputs.request_rate }}
+      DURATION: ${{ inputs.duration }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run editor actions load test
+        uses: grafana/run-k6-action@v1
+        with:
+          path: load/editor-actions-load-test.js
+        env:
+          BASE_URL: ${{ env.BASE_URL }}
+
+      - name: Run editor actions spike test
+        uses: grafana/run-k6-action@v1
+        with:
+          path: load/editor-actions-spike-test.js
+        env:
+          BASE_URL: ${{ env.BASE_URL }}
+
+      - name: Run editor queue load test
+        uses: grafana/run-k6-action@v1
+        with:
+          path: load/editor-queue-load-test.js
+        env:
+          BASE_URL: ${{ env.BASE_URL }}
+          REQUEST_RATE: ${{ env.REQUEST_RATE }}
+          DURATION: ${{ env.DURATION }}
+
+      - name: Upload k6 summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results
+          path: load/results/
+          retention-days: 14
+          if-no-files-found: ignore

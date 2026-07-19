@@ -1,3 +1,4 @@
+import React from "react";
 import {
   createContext,
   type PropsWithChildren,
@@ -59,7 +60,7 @@ function upsertJob(
 
 export function AIActionQueueProvider({
   children,
-}: PropsWithChildren): JSX.Element {
+}: PropsWithChildren): React.ReactElement {
   const [jobs, setJobs] = useState<AIActionJob[]>([]);
   const [latestError, setLatestError] = useState<string | null>(null);
 

@@ -1,3 +1,4 @@
+import React from "react";
 import {
   useEffect,
   useMemo,
@@ -104,7 +105,7 @@ export default function AIJobQueuePanel({
   collapsedByDefault = false,
   pollingIntervalMs = 1800,
   onApplyResult,
-}: AIJobQueuePanelProps): JSX.Element {
+}: AIJobQueuePanelProps): React.ReactElement {
   const {
     jobs,
     latestError,

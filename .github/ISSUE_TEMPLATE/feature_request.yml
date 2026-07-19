@@ -1,0 +1,81 @@
+name: Feature request
+description: Suggest an improvement for AI Film Studio
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Describe the problem first, then explain the proposed solution.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or need
+      description: What workflow, limitation, or user need should this feature address?
+      placeholder: Describe the problem and who experiences it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Explain how the feature should work from the user's perspective.
+      placeholder: Describe the expected behavior and user experience.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Product area
+      options:
+        - Editor
+        - Realtime collaboration
+        - Media upload or processing
+        - Rendering or export
+        - AI generation
+        - Project management
+        - Authentication or accounts
+        - Backend API
+        - Deployment or infrastructure
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe existing workarounds or other solutions you considered.
+      placeholder: Explain how this is handled today.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable conditions that would make the feature complete.
+      placeholder: |
+        - A user can ...
+        - The system displays ...
+        - Errors are handled by ...
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add mockups, examples, links, constraints, or technical considerations.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checklist
+      options:
+        - label: I searched existing issues for similar requests.
+          required: true
+        - label: This request describes a user problem, not only an implementation preference.
+          required: true
+        - label: I removed secrets and sensitive information.
+          required: true
