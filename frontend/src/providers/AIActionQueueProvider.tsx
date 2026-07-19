@@ -26,7 +26,7 @@ export interface AIActionQueueContextValue {
 const AIActionQueueContext =
   createContext<AIActionQueueContextValue | null>(null);
 
-interface AIJobQueuedEvent extends CustomEvent<AIActionJob> {}
+type AIJobQueuedEvent = CustomEvent<AIActionJob>;
 
 interface AIJobErrorDetail {
   action?: string;
@@ -34,7 +34,7 @@ interface AIJobErrorDetail {
   error?: string;
 }
 
-interface AIJobErrorEvent extends CustomEvent<AIJobErrorDetail> {}
+type AIJobErrorEvent = CustomEvent<AIJobErrorDetail>;
 
 function upsertJob(
   currentJobs: AIActionJob[],

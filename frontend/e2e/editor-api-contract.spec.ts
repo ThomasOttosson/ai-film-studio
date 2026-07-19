@@ -10,13 +10,13 @@ test.describe("editor API contract", () => {
 
     await page.route("**/api/ai/actions", async (route) => {
       const request = route.request();
-      let body: unknown = null;
-
-      try {
-        body = request.postDataJSON();
-      } catch {
-        body = request.postData();
-      }
+      const body: unknown = (() => {
+        try {
+          return request.postDataJSON();
+        } catch {
+          return request.postData();
+        }
+      })();
 
       observedRequests.push({
         method: request.method(),

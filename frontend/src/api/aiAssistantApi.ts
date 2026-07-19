@@ -151,6 +151,6 @@ export async function sendAiAssistantMessage(
       error
     );
 
-    throw new Error(getApiErrorMessage(error));
+    throw new Error(getApiErrorMessage(error), { cause: error });
   }
 }

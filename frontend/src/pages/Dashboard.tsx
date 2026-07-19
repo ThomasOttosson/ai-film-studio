@@ -1803,7 +1803,8 @@ function Dashboard() {
       );
 
       throw new Error(
-        `Could not regenerate Scene ${sceneId}. Check the backend logs.`
+        `Could not regenerate Scene ${sceneId}. Check the backend logs.`,
+        { cause: error },
       );
     } finally {
       setGeneratingImageSceneId(null);
