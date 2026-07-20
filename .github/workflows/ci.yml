@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  statuses: write
 
 jobs:
   frontend:
@@ -36,12 +35,6 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Notify Vercel
-        if: always()
-        uses: vercel/repository-dispatch/actions/status@v1
-        with:
-          name: "Vercel - ai-film-studio: Frontend Build"
-
   backend:
     name: Backend Check
     runs-on: ubuntu-latest
@@ -67,12 +60,6 @@ jobs:
       - name: Python syntax check
         run: python -m compileall -q .
 
-      - name: Notify Vercel
-        if: always()
-        uses: vercel/repository-dispatch/actions/status@v1
-        with:
-          name: "Vercel - ai-film-studio: Backend Check"
-
   docker:
     name: Docker Compose Build
     runs-on: ubuntu-latest
@@ -83,9 +70,3 @@ jobs:
 
       - name: Build Docker images
         run: docker compose build
-
-      - name: Notify Vercel
-        if: always()
-        uses: vercel/repository-dispatch/actions/status@v1
-        with:
-          name: "Vercel - ai-film-studio: Docker Compose Build"
