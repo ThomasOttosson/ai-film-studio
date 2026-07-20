@@ -20,11 +20,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --ipc=host
+
     services:
       redis:
         image: redis:7-alpine
-        ports:
-          - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s
@@ -34,7 +36,9 @@ jobs:
     env:
       CI: "true"
       NODE_ENV: test
-      REDIS_URL: redis://127.0.0.1:6379
+      TZ: UTC
+      LANG: C.UTF-8
+      REDIS_URL: redis://redis:6379
 
     steps:
       - name: Checkout code
@@ -55,18 +59,12 @@ jobs:
         working-directory: frontend
         run: npm ls @playwright/test
 
-      - name: Install Playwright browser
-        working-directory: frontend
-        run: npx --no-install playwright install --with-deps chromium
-
       - name: Run Playwright tests
         working-directory: frontend
         env:
-          CI: "true"
-          NODE_ENV: test
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: npx --no-install playwright test --project=chromium
+        run: npx --no-install playwright test --project=chromium --workers=1
 
       - name: Upload Playwright report
         if: always()
