@@ -11,11 +11,24 @@ permissions:
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --ipc=host
+
+    env:
+      CI: "true"
+      NODE_ENV: test
+      TZ: UTC
+      LANG: C.UTF-8
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -25,10 +38,28 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Install Playwright browsers
+      - name: Verify Playwright installation
         working-directory: frontend
-        run: npx --no-install playwright install --with-deps chromium
+        run: npm ls @playwright/test
 
       - name: Run editor E2E tests
         working-directory: frontend
-        run: npm run test:e2e -- --project=chromium
+        run: npm run test:e2e -- --project=chromium --workers=1
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-playwright-report
+          path: frontend/playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload Playwright test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-playwright-test-results
+          path: frontend/test-results/
+          retention-days: 14
+          if-no-files-found: ignore
