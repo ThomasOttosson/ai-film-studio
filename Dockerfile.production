@@ -25,4 +25,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" || exit 1
 
-CMD ["python", "backend/app.py"]
+# Run from the backend/ directory so main.py's top-level imports (app.*,
+# generation_queue, redis_client) resolve, matching how docker-compose.yml and
+# backend/Dockerfile launch the app. Apply migrations first, then serve.
+CMD ["sh", "-c", "cd backend && python migrate.py && uvicorn main:app --host 0.0.0.0 --port 8000"]
