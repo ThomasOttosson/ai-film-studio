@@ -11,7 +11,29 @@ from app.schemas.images import AudioRequest, AudioResponse, ImageRequest, ImageR
 from app.schemas.storyboard import Scene, StoryboardRequest
 from app.services.backblaze_service import upload_audio_to_b2, upload_image_to_b2
 
-client = OpenAI()
+_client: OpenAI | None = None
+
+
+def get_client() -> OpenAI:
+    """Lazily construct the OpenAI client.
+
+    Constructing OpenAI() at import time raises when OPENAI_API_KEY is unset,
+    which prevents the app from even importing. Deferring construction to first
+    use lets `import main` succeed without a key; a clear error is only raised
+    when generation is actually attempted.
+    """
+    global _client
+
+    if _client is None:
+        if not os.getenv("OPENAI_API_KEY"):
+            raise HTTPException(
+                status_code=500,
+                detail="Missing OPENAI_API_KEY. Check backend/.env",
+            )
+
+        _client = OpenAI()
+
+    return _client
 
 
 def generate_storyboard_with_ai(request: StoryboardRequest) -> List[Scene]:
@@ -56,7 +78,7 @@ Return an object with this exact structure:
 """
 
     try:
-        response = client.chat.completions.create(
+        response = get_client().chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
                 {
@@ -112,7 +134,7 @@ No text, no subtitles, no watermark.
 """
 
     try:
-        response = client.images.generate(
+        response = get_client().images.generate(
             model="gpt-image-1",
             prompt=image_prompt,
             size="1024x1024",
@@ -152,7 +174,7 @@ def generate_audio_with_ai(request: AudioRequest) -> AudioResponse:
         )
 
     try:
-        response = client.audio.speech.create(
+        response = get_client().audio.speech.create(
             model="gpt-4o-mini-tts",
             voice=request.voice,
             input=request.narration,
