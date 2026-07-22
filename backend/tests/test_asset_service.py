@@ -132,6 +132,29 @@ def test_restore_moves_pointer_and_updates_blob(db, captured_uploads):
     assert listing.versions[0].version_number == 2
 
 
+def test_music_project_level_key_and_manifest(db, captured_uploads):
+    version = _record(
+        db,
+        project_id="p",
+        scene_id=None,
+        asset_type="music",
+        ext="mp3",
+        manifest_sha="abc123def456",
+    )
+    params = captured_uploads[-1]
+    assert params.key.startswith("projects/p/music/v1/")
+    assert params.key.endswith(".mp3")
+    assert "/scenes/" not in params.key
+    assert params.metadata["genblaze-manifest"] == "abc123def456"
+    assert version.manifest_sha == "abc123def456"
+
+
+def test_manifest_sha_absent_leaves_metadata_clean(db, captured_uploads):
+    version = _record(db)  # no manifest_sha (e.g. direct-Luma video path)
+    assert "genblaze-manifest" not in captured_uploads[-1].metadata
+    assert version.manifest_sha is None
+
+
 def test_restore_project_level_updates_final_movie_url(db, captured_uploads):
     project = Project(id="p", owner_id=1, name="Test", data={})
     db.add(project)
