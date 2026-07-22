@@ -1406,8 +1406,16 @@ function Dashboard() {
         error
       );
 
+      const detail = (
+        error as {
+          response?: { data?: { detail?: unknown } };
+        }
+      )?.response?.data?.detail;
+
       alert(
-        "Could not generate image. Check your backend terminal."
+        typeof detail === "string" && detail
+          ? detail
+          : "Could not generate image. Check your backend terminal."
       );
     } finally {
       setGeneratingImageSceneId(null);

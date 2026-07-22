@@ -5,7 +5,7 @@ import uuid
 from typing import List
 
 from fastapi import HTTPException
-from openai import OpenAI
+from openai import BadRequestError, OpenAI
 
 from app.schemas.images import AudioRequest, AudioResponse, ImageRequest, ImageResponse
 from app.schemas.storyboard import Scene, StoryboardRequest
@@ -153,6 +153,33 @@ No text, no subtitles, no watermark.
         return ImageResponse(
             image_url=image_url,
             prompt=image_prompt,
+        )
+
+    except HTTPException:
+        raise
+
+    except BadRequestError as error:
+        # gpt-image-1 rejects disallowed prompts with a 400 whose code is
+        # "moderation_blocked" (message mentions the safety system). Surface a
+        # clear, actionable reason instead of a generic failure. We do NOT
+        # rewrite the prompt or attempt to bypass the filter.
+        haystack = f"{getattr(error, 'code', '') or ''} {error}".lower()
+        if (
+            "moderation" in haystack
+            or "safety system" in haystack
+            or "content policy" in haystack
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "This scene's prompt was rejected by the image provider's "
+                    "content filter — edit the scene description and retry."
+                ),
+            )
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"Image request rejected: {getattr(error, 'message', str(error))}",
         )
 
     except Exception as error:
