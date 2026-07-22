@@ -82,7 +82,8 @@ npm run dev                        # http://localhost:5173
 ## Repo layout
 
 - `backend/main.py`, `backend/app/routes/`, `backend/app/services/`, `backend/generation_queue.py`, `backend/worker.py`, `backend/app/models.py`, `backend/migrations/` — the running application.
+- `backend/app/services/genblaze_service.py` — Genblaze SDK integration (image + music generation).
 - `frontend/src/pages/Dashboard.tsx` and `frontend/src/api/` — the live frontend and its API client.
 - `docs/HANDOFF_AUDIT.md` — full technical audit of the codebase.
 
-> **Legacy / not part of the running app.** The following exist in the repo but are **not** wired into the live system and should not be mistaken for it: `backend/providers/` and the `backend/ai_*.py` modules (an unwired provider framework), `frontend/src/features/editor/` (an unreachable timeline editor), and everything in `docs/` **except** `HANDOFF_AUDIT.md` (generic boilerplate that does not describe this app). See the audit for details.
+> **Still present but not core to the generation pipeline:** the AI-assistant chat (`ai_assistant` route + `AIActionQueueProvider`/AI-action components), live collaboration, and notifications. These are wired into the app and left in place for demo stability; they are not part of the scene → image → video → music → movie flow. The unwired provider framework, `ai_*` worker subsystem, the fabricated-output `/api/ai/actions` router, the unreachable timeline editor, and the boilerplate docs have been removed.
