@@ -22,6 +22,7 @@ from app.schemas.generation_queue import StartGenerationQueueRequest
 from app.routes import (
     ai_actions,
     ai_assistant,
+    asset_versions,
     audio,
     auth,
     exports,
@@ -103,6 +104,7 @@ app.include_router(
     dependencies=[Depends(get_current_user)],
 )
 app.include_router(projects.router)
+app.include_router(asset_versions.router)
 app.include_router(exports.router)
 app.include_router(live_collaboration.router)
 app.include_router(notifications.router)
