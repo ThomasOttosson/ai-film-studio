@@ -29,6 +29,7 @@ from app.routes import (
     images,
     live_collaboration,
     movie,
+    music,
     notifications,
     projects,
     storyboard,
@@ -131,6 +132,11 @@ app.include_router(
 
 app.include_router(
     movie.router,
+    dependencies=[Depends(get_current_user)],
+)
+
+app.include_router(
+    music.router,
     dependencies=[Depends(get_current_user)],
 )
 

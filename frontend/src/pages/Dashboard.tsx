@@ -31,6 +31,7 @@ import {
 import AIAssistantWidget from "../components/AIAssistantWidget";
 import AppMenuBar from "../components/AppMenuBar";
 import FinalMovie from "../components/FinalMovie";
+import MusicPanel from "../components/MusicPanel";
 import GenerationQueue, {
   type QueueStep,
 } from "../components/GenerationQueue";
@@ -260,6 +261,10 @@ function Dashboard() {
   const [finalMovieUrl, setFinalMovieUrl] =
     useState(initialProject.data.finalMovieUrl);
 
+  const [musicUrl, setMusicUrl] = useState(
+    initialProject.data.musicUrl
+  );
+
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
@@ -271,6 +276,7 @@ function Dashboard() {
     sceneLength,
     aspectRatio,
     finalMovieUrl,
+    musicUrl,
   };
 
   const activeProject = projects.find(
@@ -313,6 +319,7 @@ function Dashboard() {
     setSceneLength(projectData.sceneLength);
     setAspectRatio(projectData.aspectRatio);
     setFinalMovieUrl(projectData.finalMovieUrl);
+    setMusicUrl(projectData.musicUrl);
 
     lastHistorySnapshotRef.current =
       cloneProjectData(projectData);
@@ -1730,6 +1737,7 @@ function Dashboard() {
             "Untitled Film",
           video_urls: videoUrls,
           project_id: activeProjectId,
+          music_url: musicUrl || null,
         });
 
       setFinalMovieUrl(
@@ -2241,6 +2249,32 @@ function Dashboard() {
 
             <MediaLibrary
               scenes={scenes}
+            />
+
+            <MusicPanel
+              projectId={activeProjectId}
+              defaultPrompt={`${style} background score for "${
+                movieTitle || "the film"
+              }". Mood: ${
+                scenes
+                  .map((scene) => scene.mood)
+                  .filter(Boolean)
+                  .join(", ") || "cinematic"
+              }.`}
+              durationSeconds={Math.min(
+                90,
+                Math.max(
+                  10,
+                  scenes.reduce(
+                    (total, scene) =>
+                      total +
+                      getSceneSeconds(scene, sceneLength),
+                    0
+                  )
+                )
+              )}
+              musicUrl={musicUrl}
+              onMusicChange={setMusicUrl}
             />
 
             <section className="card card-dark p-4 mt-5">

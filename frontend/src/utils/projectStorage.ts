@@ -10,6 +10,7 @@ export interface SavedProjectData {
   sceneLength: number;
   aspectRatio: string;
   finalMovieUrl: string;
+  musicUrl: string;
 }
 
 export interface StoredProject {
@@ -52,6 +53,7 @@ export const defaultProjectData: SavedProjectData = {
   sceneLength: 5,
   aspectRatio: "16:9",
   finalMovieUrl: "",
+  musicUrl: "",
 };
 
 function createProjectId(): string {

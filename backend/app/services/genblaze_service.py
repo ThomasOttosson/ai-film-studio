@@ -69,7 +69,8 @@ def _fetch_bytes(url: str) -> bytes:
     return response.content
 
 
-def _run(pipeline: Pipeline, timeout: float) -> tuple[bytes, str]:
+def _run(pipeline: Pipeline, timeout: float) -> tuple[bytes, str, str]:
+    """Run the pipeline and return (bytes, manifest_sha, media_type)."""
     # raise_on_failure=False so we can read the step's error_code and map it to
     # a precise status instead of a generic failure. No retry loop.
     result = pipeline.run(timeout=timeout, raise_on_failure=False)
@@ -93,7 +94,8 @@ def _run(pipeline: Pipeline, timeout: float) -> tuple[bytes, str]:
             "Genblaze returned no output asset.", status_code=502
         )
 
-    return _fetch_bytes(assets[0].url), manifest.canonical_hash
+    asset = assets[0]
+    return _fetch_bytes(asset.url), manifest.canonical_hash, asset.media_type
 
 
 def generate_image(prompt: str) -> tuple[bytes, str, str, str]:
@@ -104,14 +106,14 @@ def generate_image(prompt: str) -> tuple[bytes, str, str, str]:
         prompt=prompt,
         modality=Modality.IMAGE,
     )
-    data, manifest_sha = _run(pipeline, timeout=300)
+    data, manifest_sha, _media_type = _run(pipeline, timeout=300)
     return data, "openai", IMAGE_MODEL, manifest_sha
 
 
 def generate_music(
     prompt: str, duration_seconds: int
-) -> tuple[bytes, str, str, str]:
-    """Returns (audio_bytes, provider, model, manifest_sha)."""
+) -> tuple[bytes, str, str, str, str]:
+    """Returns (audio_bytes, provider, model, manifest_sha, ext)."""
     duration = max(5, min(int(duration_seconds), MUSIC_MAX_SECONDS))
     pipeline = Pipeline("film-music").step(
         GMICloudAudioProvider(),  # reads GMI_API_KEY
@@ -120,5 +122,6 @@ def generate_music(
         modality=Modality.AUDIO,
         duration_seconds=duration,
     )
-    data, manifest_sha = _run(pipeline, timeout=300)
-    return data, "gmicloud", MUSIC_MODEL, manifest_sha
+    data, manifest_sha, media_type = _run(pipeline, timeout=300)
+    ext = "wav" if "wav" in (media_type or "").lower() else "mp3"
+    return data, "gmicloud", MUSIC_MODEL, manifest_sha, ext

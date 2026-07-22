@@ -96,10 +96,33 @@ export async function generateSceneImage(
   return response.data;
 }
 
+export interface MusicRequest {
+  prompt: string;
+  duration_seconds: number;
+  project_id?: string | null;
+}
+
+export interface MusicResponse {
+  music_url: string;
+  prompt: string;
+}
+
+export async function generateMusic(
+  data: MusicRequest
+): Promise<MusicResponse> {
+  const response = await apiClient.post<MusicResponse>(
+    "/api/generate-music",
+    data
+  );
+
+  return response.data;
+}
+
 export interface FullMovieRequest {
   title: string;
   video_urls: string[];
   project_id?: string | null;
+  music_url?: string | null;
 }
 
 export interface FullMovieResponse {

@@ -44,10 +44,22 @@ class VideoResponse(BaseModel):
     prompt: str
 
 
+class MusicRequest(BaseModel):
+    prompt: str
+    duration_seconds: int = 30
+    project_id: str | None = None
+
+
+class MusicResponse(BaseModel):
+    music_url: str
+    prompt: str
+
+
 class FullMovieRequest(BaseModel):
     title: str
     video_urls: List[str]
     project_id: str | None = None
+    music_url: str | None = None
 
 
 class FullMovieResponse(BaseModel):
