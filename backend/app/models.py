@@ -193,6 +193,9 @@ class AssetVersion(Base):
     provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
     model: Mapped[str | None] = mapped_column(String(120), nullable=True)
     prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Genblaze provenance manifest hash; null for assets not run through the
+    # Genblaze SDK (e.g. the direct-Luma video path).
+    manifest_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
     size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     duration_seconds: Mapped[float | None] = mapped_column(
         Float, nullable=True

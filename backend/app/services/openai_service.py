@@ -1,16 +1,19 @@
-import base64
 import json
 import os
 import uuid
 from typing import List
 
 from fastapi import HTTPException
-from openai import BadRequestError, OpenAI
+from openai import OpenAI
 
 from app.schemas.images import AudioRequest, AudioResponse, ImageRequest, ImageResponse
 from app.schemas.storyboard import Scene, StoryboardRequest
 from app.services.asset_service import record_generation_isolated
 from app.services.backblaze_service import upload_audio_to_b2, upload_image_to_b2
+from app.services.genblaze_service import (
+    GenblazeGenerationError,
+    generate_image as genblaze_generate_image,
+)
 
 _client: OpenAI | None = None
 
@@ -135,30 +138,23 @@ No text, no subtitles, no watermark.
 """
 
     try:
-        response = get_client().images.generate(
-            model="gpt-image-1",
-            prompt=image_prompt,
-            size="1024x1024",
-            quality="medium",
+        # Image generation is orchestrated through Genblaze (OpenAI
+        # gpt-image-1 adapter); content-filter/quota errors surface as 4xx.
+        image_bytes, provider, model, manifest_sha = genblaze_generate_image(
+            image_prompt
         )
-
-        image_base64 = response.data[0].b64_json
-
-        if not image_base64:
-            raise HTTPException(status_code=500, detail="No image returned")
-
-        image_bytes = base64.b64decode(image_base64)
 
         if request.project_id:
             version = record_generation_isolated(
                 project_id=request.project_id,
                 scene_id=request.scene_id,
                 asset_type="image",
-                provider="openai",
-                model="gpt-image-1",
+                provider=provider,
+                model=model,
                 prompt=image_prompt,
                 file_bytes=image_bytes,
                 ext="png",
+                manifest_sha=manifest_sha,
             )
             image_url = version.b2_url
         else:
@@ -173,28 +169,10 @@ No text, no subtitles, no watermark.
     except HTTPException:
         raise
 
-    except BadRequestError as error:
-        # gpt-image-1 rejects disallowed prompts with a 400 whose code is
-        # "moderation_blocked" (message mentions the safety system). Surface a
-        # clear, actionable reason instead of a generic failure. We do NOT
-        # rewrite the prompt or attempt to bypass the filter.
-        haystack = f"{getattr(error, 'code', '') or ''} {error}".lower()
-        if (
-            "moderation" in haystack
-            or "safety system" in haystack
-            or "content policy" in haystack
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    "This scene's prompt was rejected by the image provider's "
-                    "content filter — edit the scene description and retry."
-                ),
-            )
-
+    except GenblazeGenerationError as error:
         raise HTTPException(
-            status_code=400,
-            detail=f"Image request rejected: {getattr(error, 'message', str(error))}",
+            status_code=error.status_code,
+            detail=error.detail,
         )
 
     except Exception as error:

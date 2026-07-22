@@ -49,3 +49,6 @@ PyJWT==2.10.1
 pwdlib[argon2]==0.3.0
 email-validator==2.3.0
 psycopg[binary]==3.2.10
+genblaze==0.4.4
+genblaze-openai==0.3.3
+genblaze-gmicloud==0.3.4

@@ -97,6 +97,7 @@ def record_generation(
     file_bytes: bytes,
     ext: str,
     duration_seconds: float | None = None,
+    manifest_sha: str | None = None,
 ) -> AssetVersion:
     """Upload the bytes and record a new AssetVersion, updating the pointer."""
     scene_key = str(scene_id) if scene_id is not None else None
@@ -115,6 +116,8 @@ def record_generation(
     }
     if scene_key is not None:
         metadata["scene-id"] = scene_key
+    if manifest_sha:
+        metadata["genblaze-manifest"] = manifest_sha
 
     # 1) Upload first — a failure here leaves no DB row behind.
     url = upload_bytes(
@@ -146,6 +149,7 @@ def record_generation(
             provider=provider,
             model=model,
             prompt=prompt,
+            manifest_sha=manifest_sha,
             size_bytes=len(file_bytes),
             duration_seconds=duration_seconds,
         )
