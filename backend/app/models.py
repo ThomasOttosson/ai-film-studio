@@ -1,6 +1,17 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -120,3 +131,78 @@ class Notification(Base):
         if not self.is_read:
             self.is_read = True
             self.read_at = utcnow()
+
+
+class Asset(Base):
+    """A logical, versioned asset for a project (optionally a scene).
+
+    scene_id is the scene identifier from the projects.data JSON blob
+    (stringified). Project-level assets (final movie, future music track)
+    have scene_id = None.
+    """
+
+    __tablename__ = "assets"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id", "scene_id", "asset_type", name="uq_asset_scope"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    scene_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    asset_type: Mapped[str] = mapped_column(String(20))
+    current_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "asset_versions.id",
+            use_alter=True,
+            name="fk_assets_current_version",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    versions = relationship(
+        "AssetVersion",
+        back_populates="asset",
+        cascade="all, delete-orphan",
+        foreign_keys="AssetVersion.asset_id",
+    )
+    current_version = relationship(
+        "AssetVersion",
+        foreign_keys=[current_version_id],
+        post_update=True,
+    )
+
+
+class AssetVersion(Base):
+    __tablename__ = "asset_versions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    asset_id: Mapped[int] = mapped_column(
+        ForeignKey("assets.id", ondelete="CASCADE"), index=True
+    )
+    version_number: Mapped[int] = mapped_column(Integer)
+    b2_key: Mapped[str] = mapped_column(String(1024))
+    b2_url: Mapped[str] = mapped_column(String(2048))
+    provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    duration_seconds: Mapped[float | None] = mapped_column(
+        Float, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    asset = relationship(
+        "Asset",
+        back_populates="versions",
+        foreign_keys=[asset_id],
+    )
