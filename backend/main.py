@@ -20,7 +20,6 @@ from app.models import (
 from app.routes.projects import accessible_project
 from app.schemas.generation_queue import StartGenerationQueueRequest
 from app.routes import (
-    ai_actions,
     ai_assistant,
     asset_versions,
     audio,
@@ -100,10 +99,6 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(ai_assistant.router)
 
-app.include_router(
-    ai_actions.router,
-    dependencies=[Depends(get_current_user)],
-)
 app.include_router(projects.router)
 app.include_router(asset_versions.router)
 app.include_router(exports.router)
