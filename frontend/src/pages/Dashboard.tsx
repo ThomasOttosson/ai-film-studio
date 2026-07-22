@@ -1475,12 +1475,9 @@ function Dashboard() {
         currentScene.id === scene.id
     );
 
-    if (
-      !latestScene?.imageUrl ||
-      !latestScene?.audioUrl
-    ) {
+    if (!latestScene?.imageUrl) {
       alert(
-        "Generate both image and audio before creating a video."
+        "Generate an image before creating a video."
       );
 
       return;

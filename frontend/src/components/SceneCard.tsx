@@ -85,16 +85,16 @@ function SceneCard({
             disabled={isGeneratingAudio}
           >
             {isGeneratingAudio
-              ? "Generating audio..."
+              ? "Generating narration..."
               : scene.audioUrl
-                ? "Regenerate Audio"
-                : "Generate Audio"}
+                ? "Regenerate Narration"
+                : "Generate Narration (optional)"}
           </button>
 
           <button
             className="btn btn-outline-light btn-sm"
             onClick={() => onGenerateVideo(scene)}
-            disabled={isGeneratingVideo || !scene.imageUrl || !scene.audioUrl}
+            disabled={isGeneratingVideo || !scene.imageUrl}
           >
             {isGeneratingVideo
               ? "Generating video..."
@@ -122,7 +122,7 @@ function SceneCard({
                 projectId={projectId}
                 assetType="audio"
                 sceneId={scene.id}
-                label="Audio"
+                label="Narration"
                 onRestored={(version) =>
                   onRestoreAsset(scene.id, "audio", version.b2_url)
                 }

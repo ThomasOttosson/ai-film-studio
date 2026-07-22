@@ -63,6 +63,9 @@ class StartGenerationQueueRequest(BaseModel):
     style: str = Field(default="Cinematic", min_length=1, max_length=100)
     sceneLength: int = Field(default=5, ge=1, le=30)
     aspectRatio: Literal["16:9", "9:16", "1:1"] = "16:9"
+    # Per-scene TTS narration is optional and OFF by default; background
+    # music (project-level) replaces it as the standard audio track.
+    includeNarration: bool = False
 
     @field_validator("projectId", "style")
     @classmethod

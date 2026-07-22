@@ -134,6 +134,7 @@ def create_generation_batch(
     batch_id = str(uuid.uuid4())
     payload = request.model_dump()
     scenes = payload["scenes"]
+    include_narration = payload.get("includeNarration", False)
     steps = []
 
     for scene in scenes:
@@ -149,7 +150,8 @@ def create_generation_batch(
                 "status": "waiting",
             })
 
-        if not scene.get("audioUrl"):
+        # Per-scene narration is opt-in; music replaces it by default.
+        if include_narration and not scene.get("audioUrl"):
             steps.append({
                 "id": f"{scene_id}-audio",
                 "sceneId": scene_id,
@@ -467,16 +469,12 @@ async def process_generation_batch(batch_id: str) -> None:
                     None,
                 )
 
-                if (
-                    not fresh_scene
-                    or not fresh_scene.get("imageUrl")
-                    or not fresh_scene.get("audioUrl")
-                ):
+                if not fresh_scene or not fresh_scene.get("imageUrl"):
                     update_step(
                         fresh_batch,
                         step["id"],
                         "failed",
-                        "Image and audio are required before video.",
+                        "An image is required before video.",
                     )
                     continue
 
@@ -485,7 +483,7 @@ async def process_generation_batch(batch_id: str) -> None:
                     VideoRequest(
                         scene_title=fresh_scene["title"],
                         image_url=fresh_scene["imageUrl"],
-                        audio_url=fresh_scene["audioUrl"],
+                        audio_url=fresh_scene.get("audioUrl"),
                         scene_length=scene_length,
                         aspect_ratio=aspect_ratio,
                         project_id=batch["projectId"],

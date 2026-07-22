@@ -40,7 +40,7 @@ export interface AudioResponse {
 export interface VideoRequest {
   scene_title: string;
   image_url: string;
-  audio_url: string;
+  audio_url?: string | null;
   scene_length: number;
   aspect_ratio: string;
   project_id?: string | null;

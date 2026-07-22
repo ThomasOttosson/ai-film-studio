@@ -178,6 +178,21 @@ def concatenate_video_urls(video_urls: list[str]) -> str:
                 os.remove(path)
 
 
+def read_video_bytes(video_path_or_url: str) -> bytes:
+    """Return the raw bytes of a video given a URL or local path (no audio)."""
+    if video_path_or_url.startswith("http"):
+        path = download_file(video_path_or_url, ".mp4")
+        try:
+            with open(path, "rb") as file:
+                return file.read()
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+
+    with open(video_path_or_url, "rb") as file:
+        return file.read()
+
+
 def merge_video_with_audio(video_path_or_url: str, audio_url: str) -> bytes:
     audio_path = None
     output_path = None
@@ -235,10 +250,10 @@ def generate_ai_video_from_scene(request: VideoRequest) -> VideoResponse:
             detail="Missing LUMA_API_KEY. Check backend/.env",
         )
 
-    if not request.image_url or not request.audio_url:
+    if not request.image_url:
         raise HTTPException(
             status_code=400,
-            detail="Both image_url and audio_url are required.",
+            detail="image_url is required.",
         )
 
     try:
@@ -250,10 +265,13 @@ def generate_ai_video_from_scene(request: VideoRequest) -> VideoResponse:
         )
 
         if request.scene_length <= 5:
-            final_video_bytes = merge_video_with_audio(
-                video_path_or_url=first_video_url,
-                audio_url=request.audio_url,
-            )
+            if request.audio_url:
+                final_video_bytes = merge_video_with_audio(
+                    video_path_or_url=first_video_url,
+                    audio_url=request.audio_url,
+                )
+            else:
+                final_video_bytes = read_video_bytes(first_video_url)
         else:
             last_frame_path = extract_last_frame(first_video_url)
             last_frame_url = upload_frame_to_b2(last_frame_path)
@@ -273,10 +291,13 @@ def generate_ai_video_from_scene(request: VideoRequest) -> VideoResponse:
                 [first_video_url, second_video_url]
             )
 
-            final_video_bytes = merge_video_with_audio(
-                video_path_or_url=combined_video_path,
-                audio_url=request.audio_url,
-            )
+            if request.audio_url:
+                final_video_bytes = merge_video_with_audio(
+                    video_path_or_url=combined_video_path,
+                    audio_url=request.audio_url,
+                )
+            else:
+                final_video_bytes = read_video_bytes(combined_video_path)
 
             if os.path.exists(combined_video_path):
                 os.remove(combined_video_path)
