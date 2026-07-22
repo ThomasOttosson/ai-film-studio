@@ -1,8 +1,17 @@
+import VersionHistory from "./VersionHistory";
+import type { AssetVersion } from "../api/assetVersionApi";
+
 interface FinalMovieProps {
   finalMovieUrl: string;
+  projectId?: string | null;
+  onRestored?: (version: AssetVersion) => void;
 }
 
-function FinalMovie({ finalMovieUrl }: FinalMovieProps) {
+function FinalMovie({
+  finalMovieUrl,
+  projectId,
+  onRestored,
+}: FinalMovieProps) {
   return (
     <section
       className="card card-dark p-4 mt-5"
@@ -61,6 +70,15 @@ function FinalMovie({ finalMovieUrl }: FinalMovieProps) {
           ⬇ Download MP4
         </a>
       </div>
+
+      {projectId && onRestored && (
+        <VersionHistory
+          projectId={projectId}
+          assetType="movie"
+          label="Movie"
+          onRestored={onRestored}
+        />
+      )}
     </section>
   );
 }

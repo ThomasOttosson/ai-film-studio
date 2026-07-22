@@ -1,5 +1,8 @@
 import { FiImage } from "react-icons/fi";
 import type { Scene } from "../types/film";
+import VersionHistory from "./VersionHistory";
+
+type SceneAssetType = "image" | "audio" | "video";
 
 interface SceneCardProps {
   scene: Scene;
@@ -9,6 +12,12 @@ interface SceneCardProps {
   isGeneratingImage: boolean;
   isGeneratingAudio: boolean;
   isGeneratingVideo: boolean;
+  projectId?: string | null;
+  onRestoreAsset?: (
+    sceneId: number,
+    assetType: SceneAssetType,
+    url: string
+  ) => void;
 }
 
 function SceneCard({
@@ -19,6 +28,8 @@ function SceneCard({
   isGeneratingImage,
   isGeneratingAudio,
   isGeneratingVideo,
+  projectId,
+  onRestoreAsset,
 }: SceneCardProps) {
   return (
     <div className="col-md-4">
@@ -92,6 +103,44 @@ function SceneCard({
                 : "Generate Video"}
           </button>
         </div>
+
+        {projectId && onRestoreAsset && (
+          <div className="mt-2">
+            {scene.imageUrl && (
+              <VersionHistory
+                projectId={projectId}
+                assetType="image"
+                sceneId={scene.id}
+                label="Image"
+                onRestored={(version) =>
+                  onRestoreAsset(scene.id, "image", version.b2_url)
+                }
+              />
+            )}
+            {scene.audioUrl && (
+              <VersionHistory
+                projectId={projectId}
+                assetType="audio"
+                sceneId={scene.id}
+                label="Audio"
+                onRestored={(version) =>
+                  onRestoreAsset(scene.id, "audio", version.b2_url)
+                }
+              />
+            )}
+            {scene.videoUrl && (
+              <VersionHistory
+                projectId={projectId}
+                assetType="video"
+                sceneId={scene.id}
+                label="Video"
+                onRestored={(version) =>
+                  onRestoreAsset(scene.id, "video", version.b2_url)
+                }
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

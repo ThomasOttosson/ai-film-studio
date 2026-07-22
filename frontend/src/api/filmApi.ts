@@ -15,6 +15,8 @@ export interface ImageRequest {
   narration: string;
   mood: string;
   style: string;
+  project_id?: string | null;
+  scene_id?: string | null;
 }
 
 export interface ImageResponse {
@@ -26,6 +28,8 @@ export interface AudioRequest {
   scene_title: string;
   narration: string;
   voice: string;
+  project_id?: string | null;
+  scene_id?: string | null;
 }
 
 export interface AudioResponse {
@@ -39,6 +43,8 @@ export interface VideoRequest {
   audio_url: string;
   scene_length: number;
   aspect_ratio: string;
+  project_id?: string | null;
+  scene_id?: string | null;
 }
 
 export interface VideoResponse {
@@ -93,6 +99,7 @@ export async function generateSceneImage(
 export interface FullMovieRequest {
   title: string;
   video_urls: string[];
+  project_id?: string | null;
 }
 
 export interface FullMovieResponse {

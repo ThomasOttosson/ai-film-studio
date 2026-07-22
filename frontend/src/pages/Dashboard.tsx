@@ -1384,6 +1384,8 @@ function Dashboard() {
           narration: scene.narration,
           mood: scene.mood,
           style,
+          project_id: activeProjectId,
+          scene_id: String(scene.id),
         });
 
       setScenes((currentScenes) =>
@@ -1433,6 +1435,8 @@ function Dashboard() {
           scene_title: scene.title,
           narration: scene.narration,
           voice: "alloy",
+          project_id: activeProjectId,
+          scene_id: String(scene.id),
         });
 
       setScenes((currentScenes) =>
@@ -1497,6 +1501,8 @@ function Dashboard() {
             sceneLength
           ),
           aspect_ratio: aspectRatio,
+          project_id: activeProjectId,
+          scene_id: String(latestScene.id),
         });
 
       setScenes((currentScenes) =>
@@ -1526,6 +1532,27 @@ function Dashboard() {
     } finally {
       setGeneratingVideoSceneId(null);
     }
+  }
+
+  function handleRestoreSceneAsset(
+    sceneId: number,
+    assetType: "image" | "audio" | "video",
+    url: string
+  ) {
+    const field =
+      assetType === "image"
+        ? "imageUrl"
+        : assetType === "audio"
+          ? "audioUrl"
+          : "videoUrl";
+
+    setScenes((currentScenes) =>
+      currentScenes.map((currentScene) =>
+        currentScene.id === sceneId
+          ? { ...currentScene, [field]: url }
+          : currentScene
+      )
+    );
   }
 
   async function handlePauseQueue() {
@@ -1705,6 +1732,7 @@ function Dashboard() {
             movieTitle ||
             "Untitled Film",
           video_urls: videoUrls,
+          project_id: activeProjectId,
         });
 
       setFinalMovieUrl(
@@ -1749,6 +1777,8 @@ function Dashboard() {
           narration: scene.narration,
           mood: scene.mood,
           style,
+          project_id: activeProjectId,
+          scene_id: String(scene.id),
         });
 
       const sceneWithNewImage: Scene = {
@@ -1784,6 +1814,8 @@ function Dashboard() {
             sceneLength
           ),
           aspect_ratio: aspectRatio,
+          project_id: activeProjectId,
+          scene_id: String(sceneWithNewImage.id),
         });
 
       setScenes((currentScenes) =>
@@ -2194,6 +2226,10 @@ function Dashboard() {
                       generatingVideoSceneId ===
                       scene.id
                     }
+                    projectId={activeProjectId}
+                    onRestoreAsset={
+                      handleRestoreSceneAsset
+                    }
                   />
                 ))}
               </div>
@@ -2240,6 +2276,10 @@ function Dashboard() {
               <FinalMovie
                 finalMovieUrl={
                   finalMovieUrl
+                }
+                projectId={activeProjectId}
+                onRestored={(version) =>
+                  setFinalMovieUrl(version.b2_url)
                 }
               />
             )}
