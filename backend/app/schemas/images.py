@@ -7,6 +7,8 @@ class ImageRequest(BaseModel):
     narration: str
     mood: str
     style: str = "cinematic"
+    project_id: str | None = None
+    scene_id: str | None = None
 
 
 class ImageResponse(BaseModel):
@@ -18,6 +20,8 @@ class AudioRequest(BaseModel):
     scene_title: str
     narration: str
     voice: str = "alloy"
+    project_id: str | None = None
+    scene_id: str | None = None
 
 
 class AudioResponse(BaseModel):
@@ -31,6 +35,8 @@ class VideoRequest(BaseModel):
     audio_url: str
     scene_length: int = 5
     aspect_ratio: str = "16:9"
+    project_id: str | None = None
+    scene_id: str | None = None
 
 
 class VideoResponse(BaseModel):
@@ -41,6 +47,7 @@ class VideoResponse(BaseModel):
 class FullMovieRequest(BaseModel):
     title: str
     video_urls: List[str]
+    project_id: str | None = None
 
 
 class FullMovieResponse(BaseModel):

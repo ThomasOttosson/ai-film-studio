@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from moviepy import AudioFileClip, VideoFileClip, concatenate_videoclips
 
 from app.schemas.images import VideoRequest, VideoResponse
+from app.services.asset_service import record_generation_isolated
 from app.services.backblaze_service import upload_image_to_b2, upload_video_to_b2
 
 
@@ -280,12 +281,30 @@ def generate_ai_video_from_scene(request: VideoRequest) -> VideoResponse:
             if os.path.exists(combined_video_path):
                 os.remove(combined_video_path)
 
-        filename = f"{uuid.uuid4()}.mp4"
-        b2_video_url = upload_video_to_b2(final_video_bytes, filename)
+        video_prompt = (
+            f"AI video generated for scene: {request.scene_title}"
+        )
+
+        if request.project_id:
+            version = record_generation_isolated(
+                project_id=request.project_id,
+                scene_id=request.scene_id,
+                asset_type="video",
+                provider="luma",
+                model="ray-3.2",
+                prompt=video_prompt,
+                file_bytes=final_video_bytes,
+                ext="mp4",
+                duration_seconds=float(request.scene_length),
+            )
+            b2_video_url = version.b2_url
+        else:
+            filename = f"{uuid.uuid4()}.mp4"
+            b2_video_url = upload_video_to_b2(final_video_bytes, filename)
 
         return VideoResponse(
             video_url=b2_video_url,
-            prompt=f"AI video generated for scene: {request.scene_title}",
+            prompt=video_prompt,
         )
 
     except HTTPException:

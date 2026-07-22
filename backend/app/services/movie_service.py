@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from moviepy import VideoFileClip, concatenate_videoclips
 
 from app.schemas.images import FullMovieRequest, FullMovieResponse
+from app.services.asset_service import record_generation_isolated
 from app.services.backblaze_service import upload_video_to_b2
 
 
@@ -56,8 +57,21 @@ def generate_full_movie(request: FullMovieRequest) -> FullMovieResponse:
         with open(output_path, "rb") as file:
             movie_bytes = file.read()
 
-        filename = f"{uuid.uuid4()}.mp4"
-        final_movie_url = upload_video_to_b2(movie_bytes, filename)
+        if request.project_id:
+            version = record_generation_isolated(
+                project_id=request.project_id,
+                scene_id=None,
+                asset_type="movie",
+                provider="moviepy",
+                model="concatenate_videoclips",
+                prompt=f"Final movie: {request.title}",
+                file_bytes=movie_bytes,
+                ext="mp4",
+            )
+            final_movie_url = version.b2_url
+        else:
+            filename = f"{uuid.uuid4()}.mp4"
+            final_movie_url = upload_video_to_b2(movie_bytes, filename)
 
         return FullMovieResponse(
             final_movie_url=final_movie_url,

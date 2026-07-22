@@ -9,6 +9,7 @@ from openai import BadRequestError, OpenAI
 
 from app.schemas.images import AudioRequest, AudioResponse, ImageRequest, ImageResponse
 from app.schemas.storyboard import Scene, StoryboardRequest
+from app.services.asset_service import record_generation_isolated
 from app.services.backblaze_service import upload_audio_to_b2, upload_image_to_b2
 
 _client: OpenAI | None = None
@@ -147,8 +148,22 @@ No text, no subtitles, no watermark.
             raise HTTPException(status_code=500, detail="No image returned")
 
         image_bytes = base64.b64decode(image_base64)
-        filename = f"{uuid.uuid4()}.png"
-        image_url = upload_image_to_b2(image_bytes, filename)
+
+        if request.project_id:
+            version = record_generation_isolated(
+                project_id=request.project_id,
+                scene_id=request.scene_id,
+                asset_type="image",
+                provider="openai",
+                model="gpt-image-1",
+                prompt=image_prompt,
+                file_bytes=image_bytes,
+                ext="png",
+            )
+            image_url = version.b2_url
+        else:
+            filename = f"{uuid.uuid4()}.png"
+            image_url = upload_image_to_b2(image_bytes, filename)
 
         return ImageResponse(
             image_url=image_url,
@@ -209,8 +224,22 @@ def generate_audio_with_ai(request: AudioRequest) -> AudioResponse:
         )
 
         audio_bytes = response.read()
-        filename = f"{uuid.uuid4()}.mp3"
-        audio_url = upload_audio_to_b2(audio_bytes, filename)
+
+        if request.project_id:
+            version = record_generation_isolated(
+                project_id=request.project_id,
+                scene_id=request.scene_id,
+                asset_type="audio",
+                provider="openai",
+                model="gpt-4o-mini-tts",
+                prompt=request.narration,
+                file_bytes=audio_bytes,
+                ext="mp3",
+            )
+            audio_url = version.b2_url
+        else:
+            filename = f"{uuid.uuid4()}.mp3"
+            audio_url = upload_audio_to_b2(audio_bytes, filename)
 
         return AudioResponse(
             audio_url=audio_url,

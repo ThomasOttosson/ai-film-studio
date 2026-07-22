@@ -404,6 +404,8 @@ async def process_generation_batch(batch_id: str) -> None:
                         narration=scene["narration"],
                         mood=scene["mood"],
                         style=style,
+                        project_id=batch["projectId"],
+                        scene_id=str(scene["id"]),
                     ),
                 )
 
@@ -429,6 +431,8 @@ async def process_generation_batch(batch_id: str) -> None:
                         scene_title=scene["title"],
                         narration=scene["narration"],
                         voice="alloy",
+                        project_id=batch["projectId"],
+                        scene_id=str(scene["id"]),
                     ),
                 )
 
@@ -484,6 +488,8 @@ async def process_generation_batch(batch_id: str) -> None:
                         audio_url=fresh_scene["audioUrl"],
                         scene_length=scene_length,
                         aspect_ratio=aspect_ratio,
+                        project_id=batch["projectId"],
+                        scene_id=str(fresh_scene["id"]),
                     ),
                 )
 
