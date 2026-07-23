@@ -77,24 +77,50 @@ def test_no_output_asset_raises(monkeypatch):
         gb._run(_pipeline(_FakeResult(asset=None)), timeout=1)
 
 
-def test_generate_music_caps_duration_and_labels_ext(monkeypatch):
+def _capture_music(monkeypatch):
     captured = {}
+    monkeypatch.setattr(
+        gb, "_run", lambda pipeline, timeout: (b"AUDIO", "sha999", "audio/mpeg")
+    )
+    monkeypatch.setattr(
+        gb.Pipeline,
+        "step",
+        lambda self, provider, **kwargs: captured.update(kwargs) or self,
+    )
+    return captured
 
-    def fake_run(pipeline, timeout):
-        return b"AUDIO", "sha999", "audio/mpeg"
 
-    def fake_step(self, provider, **kwargs):
-        captured.update(kwargs)
-        return self
-
-    monkeypatch.setattr(gb, "_run", fake_run)
-    monkeypatch.setattr(gb.Pipeline, "step", fake_step)
+def test_generate_music_defaults_to_stability(monkeypatch):
+    monkeypatch.delenv("MUSIC_PROVIDER", raising=False)
+    captured = _capture_music(monkeypatch)
 
     data, provider, model, sha, ext = gb.generate_music(
         "epic score", duration_seconds=5000
     )
 
+    assert provider == "stability"
+    assert model == "stable-audio-2.5"
+    assert ext == "mp3"
+    # Stability uses the 'duration' kwarg; duration is capped.
+    assert captured["duration"] == gb.MUSIC_MAX_SECONDS
+
+
+def test_generate_music_gmicloud_when_selected(monkeypatch):
+    monkeypatch.setenv("MUSIC_PROVIDER", "gmicloud")
+    captured = _capture_music(monkeypatch)
+
+    data, provider, model, sha, ext = gb.generate_music(
+        "x", duration_seconds=30
+    )
+
     assert provider == "gmicloud"
     assert model == "minimax-music-2.5"
-    assert ext == "mp3"
-    assert captured["duration_seconds"] == gb.MUSIC_MAX_SECONDS
+    # GMI uses the 'duration_seconds' kwarg.
+    assert captured["duration_seconds"] == 30
+
+
+def test_music_provider_env_var_switch(monkeypatch):
+    monkeypatch.setenv("MUSIC_PROVIDER", "stability")
+    assert gb.music_provider_env_var() == "STABILITY_API_KEY"
+    monkeypatch.setenv("MUSIC_PROVIDER", "gmicloud")
+    assert gb.music_provider_env_var() == "GMI_API_KEY"

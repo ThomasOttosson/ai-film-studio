@@ -6,14 +6,19 @@ from fastapi import HTTPException
 from app.schemas.images import MusicRequest, MusicResponse
 from app.services.asset_service import record_generation_isolated
 from app.services.backblaze_service import upload_audio_to_b2
-from app.services.genblaze_service import GenblazeGenerationError, generate_music
+from app.services.genblaze_service import (
+    GenblazeGenerationError,
+    generate_music,
+    music_provider_env_var,
+)
 
 
 def generate_project_music(request: MusicRequest) -> MusicResponse:
-    if not os.getenv("GMI_API_KEY"):
+    env_var = music_provider_env_var()
+    if not os.getenv(env_var):
         raise HTTPException(
             status_code=500,
-            detail="Missing GMI_API_KEY. Check backend/.env",
+            detail=f"Missing {env_var}. Check backend/.env",
         )
 
     if not request.prompt.strip():

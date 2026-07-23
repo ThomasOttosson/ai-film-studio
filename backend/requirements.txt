@@ -52,3 +52,4 @@ psycopg[binary]==3.2.10
 genblaze==0.4.4
 genblaze-openai==0.3.3
 genblaze-gmicloud==0.3.4
+genblaze-stability-audio==0.3.2
