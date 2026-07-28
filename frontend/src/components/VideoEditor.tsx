@@ -33,6 +33,10 @@ interface VideoEditorProps {
   projectId?: string;
 }
 
+// The fake-data /api/ai/actions backend router was removed in M3, so these
+// controls would 404. Disabled at the render level until a real backend exists.
+const AI_ACTIONS_ENABLED = false;
+
 const DEFAULT_DURATION_SECONDS = 5;
 const MIN_DURATION_SECONDS = 1;
 
@@ -742,12 +746,16 @@ export default function VideoEditor({
             <InspectorPanel
               clip={inspectorClip}
               onChange={updateInspectorClip}
-              onOpenAiActions={openAiActions}
+              onOpenAiActions={
+                AI_ACTIONS_ENABLED ? openAiActions : undefined
+              }
             />
 
-            <AIJobQueuePanel
-              onApplyResult={applyAIResult}
-            />
+            {AI_ACTIONS_ENABLED && (
+              <AIJobQueuePanel
+                onApplyResult={applyAIResult}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -763,12 +771,14 @@ export default function VideoEditor({
         onRemoveScene={removeScene}
       />
 
-      <AIActionsPanel
-        scene={aiScene}
-        open={aiPanelOpen}
-        onClose={() => setAiPanelOpen(false)}
-        onRunAction={runAIAction}
-      />
+      {AI_ACTIONS_ENABLED && (
+        <AIActionsPanel
+          scene={aiScene}
+          open={aiPanelOpen}
+          onClose={() => setAiPanelOpen(false)}
+          onRunAction={runAIAction}
+        />
+      )}
 
       {scenes.length > 0 ? (
         <div className="card card-dark px-3 py-2 mt-3">
