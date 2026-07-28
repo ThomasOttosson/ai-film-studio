@@ -23,7 +23,7 @@ COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" || exit 1
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')" || exit 1
 
 # Run from the backend/ directory so main.py's top-level imports (app.*,
 # generation_queue, redis_client) resolve, matching how docker-compose.yml and
