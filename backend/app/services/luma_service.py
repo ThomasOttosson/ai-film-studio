@@ -10,9 +10,23 @@ from moviepy import AudioFileClip, VideoFileClip, concatenate_videoclips
 from app.schemas.images import VideoRequest, VideoResponse
 from app.services.asset_service import record_generation_isolated
 from app.services.backblaze_service import upload_image_to_b2, upload_video_to_b2
+from app.services.retry import retry_transient
 
 
 LUMA_GENERATIONS_URL = "https://agents.lumalabs.ai/v1/generations"
+
+# Luma transient failures worth retrying: network timeouts/connection drops and
+# HTTP 429 / 5xx. Other 4xx (bad request, auth) are not retried.
+_LUMA_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
+
+def _luma_retryable(exc: BaseException) -> bool:
+    if isinstance(exc, (requests.Timeout, requests.ConnectionError)):
+        return True
+    return (
+        isinstance(exc, HTTPException)
+        and exc.status_code in _LUMA_RETRYABLE_STATUS
+    )
 
 
 def download_file(url: str, suffix: str) -> str:
@@ -88,18 +102,25 @@ No text, no subtitles, no watermark.
         },
     }
 
-    create_response = requests.post(
-        LUMA_GENERATIONS_URL,
-        headers=headers,
-        json=payload,
-        timeout=60,
-    )
-
-    if not create_response.ok:
-        raise HTTPException(
-            status_code=create_response.status_code,
-            detail=create_response.text,
+    def _create():
+        response = requests.post(
+            LUMA_GENERATIONS_URL,
+            headers=headers,
+            json=payload,
+            timeout=60,
         )
+
+        if not response.ok:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=response.text,
+            )
+
+        return response
+
+    create_response = retry_transient(
+        _create, is_retryable=_luma_retryable, label="luma create"
+    )
 
     generation = create_response.json()
     generation_id = generation["id"]

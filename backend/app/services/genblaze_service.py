@@ -26,6 +26,8 @@ from genblaze_gmicloud import GMICloudAudioProvider
 from genblaze_openai import DalleProvider
 from genblaze_stability_audio import StabilityAudioProvider
 
+from app.services.retry import retry_transient
+
 logger = logging.getLogger(__name__)
 
 
@@ -131,13 +133,25 @@ _FRIENDLY = {
 }
 
 
+# Provider error codes worth retrying: transient rate limits, 5xx, timeouts.
+# content_policy / auth_failure / invalid_input never succeed on retry.
+_RETRYABLE_CODES = {"rate_limit", "server_error", "timeout"}
+
+
 class GenblazeGenerationError(Exception):
     """Carries an HTTP status so routes can surface a real 4xx reason."""
 
-    def __init__(self, detail: str, status_code: int = 502) -> None:
+    def __init__(
+        self, detail: str, status_code: int = 502, retryable: bool = False
+    ) -> None:
         super().__init__(detail)
         self.detail = detail
         self.status_code = status_code
+        self.retryable = retryable
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    return isinstance(exc, GenblazeGenerationError) and exc.retryable
 
 
 def _fetch_bytes(url: str) -> bytes:
@@ -165,7 +179,9 @@ def _run(pipeline: Pipeline, timeout: float) -> tuple[bytes, str, str]:
             code,
             f"Generation failed ({code}): {step.error or 'unknown error'}",
         )
-        raise GenblazeGenerationError(detail, status_code=status)
+        raise GenblazeGenerationError(
+            detail, status_code=status, retryable=code in _RETRYABLE_CODES
+        )
 
     _run_obj, manifest = result
     succeeded = result.succeeded_steps()
@@ -181,13 +197,19 @@ def _run(pipeline: Pipeline, timeout: float) -> tuple[bytes, str, str]:
 
 def generate_image(prompt: str) -> tuple[bytes, str, str, str]:
     """Returns (image_bytes, provider, model, manifest_sha)."""
-    pipeline = Pipeline("film-image").step(
-        DalleProvider(),  # reads OPENAI_API_KEY
-        model=IMAGE_MODEL,
-        prompt=prompt,
-        modality=Modality.IMAGE,
+
+    def _attempt():
+        pipeline = Pipeline("film-image").step(
+            DalleProvider(),  # reads OPENAI_API_KEY
+            model=IMAGE_MODEL,
+            prompt=prompt,
+            modality=Modality.IMAGE,
+        )
+        return _run(pipeline, timeout=300)
+
+    data, manifest_sha, _media_type = retry_transient(
+        _attempt, is_retryable=_is_retryable, label="genblaze image (gpt-image-1)"
     )
-    data, manifest_sha, _media_type = _run(pipeline, timeout=300)
     return data, "openai", IMAGE_MODEL, manifest_sha
 
 
@@ -197,13 +219,19 @@ def generate_music(
     """Returns (audio_bytes, provider, model, manifest_sha, ext)."""
     cfg = _music_config()
     duration = max(5, min(int(duration_seconds), MUSIC_MAX_SECONDS))
-    pipeline = Pipeline("film-music").step(
-        cfg["factory"](),  # reads its own API key from the env
-        model=cfg["model"],
-        prompt=prompt,
-        modality=Modality.AUDIO,
-        **{cfg["duration_kwarg"]: duration},
+
+    def _attempt():
+        pipeline = Pipeline("film-music").step(
+            cfg["factory"](),  # reads its own API key from the env
+            model=cfg["model"],
+            prompt=prompt,
+            modality=Modality.AUDIO,
+            **{cfg["duration_kwarg"]: duration},
+        )
+        return _run(pipeline, timeout=300)
+
+    data, manifest_sha, media_type = retry_transient(
+        _attempt, is_retryable=_is_retryable, label=f"genblaze music ({cfg['model']})"
     )
-    data, manifest_sha, media_type = _run(pipeline, timeout=300)
     ext = "wav" if "wav" in (media_type or "").lower() else "mp3"
     return data, cfg["label"], cfg["model"], manifest_sha, ext
