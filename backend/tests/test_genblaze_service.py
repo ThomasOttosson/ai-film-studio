@@ -99,7 +99,9 @@ def test_generate_music_defaults_to_stability(monkeypatch):
     )
 
     assert provider == "stability"
-    assert model == "stable-audio-2.5"
+    # 0.3.2 adapter hits Stability's stable-audio-2 endpoint (see shim); we
+    # record what actually runs, not the SDK's advertised 2.5.
+    assert model == "stable-audio-2"
     assert ext == "mp3"
     # Stability uses the 'duration' kwarg; duration is capped.
     assert captured["duration"] == gb.MUSIC_MAX_SECONDS

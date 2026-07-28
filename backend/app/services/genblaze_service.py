@@ -2,9 +2,9 @@
 
 Image runs through Genblaze's OpenAI adapter (gpt-image-1); music through a
 config-selected Genblaze audio adapter (MUSIC_PROVIDER: "stability" =
-stable-audio-2.5 by default, "gmicloud" = minimax-music-2.5). Video stays on
-the direct Luma agents integration (Genblaze's Luma adapter targets a
-different API).
+Stability's stable-audio-2 text-to-audio endpoint by default, "gmicloud" =
+minimax-music-2.5). Video stays on the direct Luma agents integration
+(Genblaze's Luma adapter targets a different API).
 
 Each call returns raw bytes plus accurate (provider, model, manifest_sha) so
 the caller can persist through asset_service.record_generation — Genblaze does
@@ -14,19 +14,59 @@ generation + provenance; our storage layer remains the system of record.
 from __future__ import annotations
 
 import base64
+import logging
 import os
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
+import httpx
 import requests
 from genblaze_core import Modality, Pipeline
 from genblaze_gmicloud import GMICloudAudioProvider
 from genblaze_openai import DalleProvider
 from genblaze_stability_audio import StabilityAudioProvider
 
+logger = logging.getLogger(__name__)
+
+
+# --- Workaround for a genblaze-stability-audio 0.3.2 defect ------------------
+# Its provider.py posts the Stability text-to-audio form with httpx ``data=``
+# (application/x-www-form-urlencoded), but the endpoint requires
+# multipart/form-data, so every call fails with HTTP 400
+# "content-type: must be multipart/form-data" before any audio is generated.
+# This client promotes such a POST to multipart. It also logs the exact URL +
+# status, which is our on-the-record evidence of *which* Stability endpoint
+# actually served the request (the adapter hardcodes the ``stable-audio-2``
+# path and sends no ``model`` field). Remove once the upstream fix ships.
+# Upstream issue: docs/GENBLAZE_UPSTREAM_ISSUE.md
+class _MultipartHttpxClient(httpx.Client):
+    def post(self, url, *, data=None, files=None, **kwargs):
+        if data and files is None:
+            files = {key: (None, str(value)) for key, value in data.items()}
+            data = None
+        response = super().post(url, data=data, files=files, **kwargs)
+        logger.info(
+            "Stability text-to-audio POST %s -> %s", url, response.status_code
+        )
+        return response
+
+
+class _StabilityAudioProviderMultipart(StabilityAudioProvider):
+    """StabilityAudioProvider using the multipart client above (0.3.2 fix)."""
+
+    def _get_http_client(self):
+        if self._http_client is None:
+            self._http_client = _MultipartHttpxClient(
+                timeout=self._http_timeout
+            )
+        return self._http_client
+
+
+# -----------------------------------------------------------------------------
+
 IMAGE_MODEL = "gpt-image-1"
-# Duration cap safe for both music providers (stable-audio-2.5 allows up to
-# 190s; minimax-music ~90s). The storyboard-derived duration is capped here.
+# Duration cap safe for both music providers (stable-audio allows up to ~190s;
+# minimax-music ~90s). The storyboard-derived duration is capped here.
 MUSIC_MAX_SECONDS = 90
 
 # Music provider is a config switch via MUSIC_PROVIDER (default "stability").
@@ -35,8 +75,13 @@ DEFAULT_MUSIC_PROVIDER = "stability"
 _MUSIC_PROVIDERS = {
     "stability": {
         "label": "stability",
-        "model": "stable-audio-2.5",
-        "factory": lambda: StabilityAudioProvider(),
+        # The genblaze-stability-audio 0.3.2 adapter hardcodes Stability's
+        # ``stable-audio-2`` text-to-audio endpoint and sends no ``model``
+        # field, so that endpoint is what actually serves the request. We
+        # record ``stable-audio-2`` rather than claiming 2.5. See the shim
+        # above and docs/GENBLAZE_UPSTREAM_ISSUE.md.
+        "model": "stable-audio-2",
+        "factory": lambda: _StabilityAudioProviderMultipart(),
         "duration_kwarg": "duration",
         "env_var": "STABILITY_API_KEY",
     },
