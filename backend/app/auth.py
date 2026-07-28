@@ -8,7 +8,27 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User
 
-SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'change-me-in-production')
+_INSECURE_JWT_DEFAULT = 'change-me-in-production'
+
+
+def _require_secret_key() -> str:
+    """Fail fast if the JWT signing secret is missing or the known default.
+
+    An unset or default secret means anyone can forge tokens, so refuse to
+    start rather than run insecurely. Local dev works via backend/.env.
+    """
+    secret = os.getenv('JWT_SECRET_KEY')
+    if not secret or secret == _INSECURE_JWT_DEFAULT:
+        raise RuntimeError(
+            'JWT_SECRET_KEY is missing or set to the insecure default '
+            f"'{_INSECURE_JWT_DEFAULT}'. Set a strong random value in "
+            'backend/.env — generate one with: '
+            'python -c "import secrets; print(secrets.token_urlsafe(64))"'
+        )
+    return secret
+
+
+SECRET_KEY = _require_secret_key()
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_MINUTES = int(os.getenv('ACCESS_TOKEN_MINUTES', '1440'))
 password_hash = PasswordHash.recommended()

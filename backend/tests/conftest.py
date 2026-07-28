@@ -8,6 +8,9 @@ os.environ.setdefault("B2_BUCKET_NAME", "test-bucket")
 os.environ.setdefault("B2_ENDPOINT_URL", "https://s3.test")
 os.environ.setdefault("B2_KEY_ID", "test-key-id")
 os.environ.setdefault("B2_APPLICATION_KEY", "test-app-key")
+# Non-default secret so importing app.auth (fail-fast on the insecure default)
+# never breaks collection.
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-not-the-default")
 
 from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
