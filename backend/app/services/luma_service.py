@@ -125,18 +125,27 @@ No text, no subtitles, no watermark.
     generation = create_response.json()
     generation_id = generation["id"]
 
-    for _ in range(80):
-        status_response = requests.get(
+    def _poll():
+        response = requests.get(
             f"{LUMA_GENERATIONS_URL}/{generation_id}",
             headers=headers,
             timeout=60,
         )
 
-        if not status_response.ok:
+        if not response.ok:
             raise HTTPException(
-                status_code=status_response.status_code,
-                detail=status_response.text,
+                status_code=response.status_code,
+                detail=response.text,
             )
+
+        return response
+
+    for _ in range(80):
+        # Retry transient blips (connection resets, 429, 5xx) on each poll so a
+        # single hiccup mid-generation doesn't fail an already-running job.
+        status_response = retry_transient(
+            _poll, is_retryable=_luma_retryable, label="luma poll"
+        )
 
         generation = status_response.json()
         state = generation.get("state") or generation.get("status")
