@@ -196,9 +196,9 @@ export default function InspectorPanel({
           <div style={styles.emptyIcon}>
             <FiSliders />
           </div>
-          <strong style={styles.emptyTitle}>Inget klipp markerat</strong>
+          <strong style={styles.emptyTitle}>No clip selected</strong>
           <p style={styles.emptyText}>
-            Markera ett klipp i tidslinjen för att redigera dess egenskaper.
+            Select a clip in the timeline to edit its properties.
           </p>
         </div>
       </aside>
@@ -216,7 +216,7 @@ export default function InspectorPanel({
           <div style={styles.clipIdentityText}>
             <span style={styles.eyebrow}>Inspector</span>
             <input
-              aria-label="Klipnamn"
+              aria-label="Clip name"
               value={clip.name}
               disabled={disabled}
               onChange={(event) => updateClip({ name: event.target.value })}
@@ -225,8 +225,8 @@ export default function InspectorPanel({
           </div>
         </div>
         {clip.locked ? (
-          <span style={styles.lockBadge} title="Klippet är låst">
-            <FiLock /> Låst
+          <span style={styles.lockBadge} title="The clip is locked">
+            <FiLock /> Locked
           </span>
         ) : null}
       </header>
@@ -243,7 +243,7 @@ export default function InspectorPanel({
             onChange={(start) => updateClip({ start })}
           />
           <NumberField
-            label="Längd"
+            label="Length"
             value={clip.duration}
             min={0.1}
             step={0.1}
@@ -252,7 +252,7 @@ export default function InspectorPanel({
             onChange={(duration) => updateClip({ duration })}
           />
           <NumberField
-            label="Hastighet"
+            label="Speed"
             value={clip.speed ?? 1}
             min={0.1}
             max={8}
@@ -262,14 +262,14 @@ export default function InspectorPanel({
             onChange={(speed) => updateClip({ speed })}
           />
           <div style={styles.readOnlyField}>
-            <span style={styles.fieldName}>Slut</span>
+            <span style={styles.fieldName}>End</span>
             <strong style={styles.readOnlyValue}>{(clip.start + clip.duration).toFixed(1)} s</strong>
           </div>
         </div>
       </Section>
 
       {isVisual ? (
-        <Section icon={<FiRotateCw />} title="Transformering">
+        <Section icon={<FiRotateCw />} title="Transform">
           <div style={styles.twoColumnGrid}>
             <NumberField
               label="Position X"
@@ -288,7 +288,7 @@ export default function InspectorPanel({
               onChange={(y) => updateTransform({ y })}
             />
             <NumberField
-              label="Skala"
+              label="Scale"
               value={transform.scale}
               min={1}
               max={500}
@@ -309,7 +309,7 @@ export default function InspectorPanel({
 
           <label style={styles.rangeLabel}>
             <span style={styles.rangeHeader}>
-              <span>Opacitet</span>
+              <span>Opacity</span>
               <strong>{Math.round(transform.opacity)}%</strong>
             </span>
             <input
@@ -326,11 +326,11 @@ export default function InspectorPanel({
       ) : null}
 
       {hasAudio ? (
-        <Section icon={<FiVolume2 />} title="Ljud">
+        <Section icon={<FiVolume2 />} title="Audio">
           <label style={styles.rangeLabel}>
             <span style={styles.rangeHeader}>
-              <span>Volym</span>
-              <strong>{audio.muted ? "Av" : `${Math.round(audio.volume)}%`}</strong>
+              <span>Volume</span>
+              <strong>{audio.muted ? "Off" : `${Math.round(audio.volume)}%`}</strong>
             </span>
             <input
               type="range"
@@ -344,7 +344,7 @@ export default function InspectorPanel({
           </label>
 
           <label style={styles.toggleRow}>
-            <span>Tysta klippet</span>
+            <span>Mute clip</span>
             <input
               type="checkbox"
               checked={audio.muted}
@@ -381,7 +381,7 @@ export default function InspectorPanel({
       {clip.type === "text" ? (
         <Section icon={<FiType />} title="Text">
           <label style={styles.fieldLabel}>
-            <span style={styles.fieldName}>Innehåll</span>
+            <span style={styles.fieldName}>Content</span>
             <textarea
               value={clip.text ?? ""}
               rows={4}
@@ -392,7 +392,7 @@ export default function InspectorPanel({
           </label>
           <div style={styles.twoColumnGrid}>
             <NumberField
-              label="Storlek"
+              label="Size"
               value={clip.fontSize ?? 48}
               min={8}
               max={240}
@@ -401,7 +401,7 @@ export default function InspectorPanel({
               onChange={(fontSize) => updateClip({ fontSize })}
             />
             <label style={styles.colorField}>
-              <span style={styles.fieldName}>Färg</span>
+              <span style={styles.fieldName}>Color</span>
               <input
                 type="color"
                 value={clip.textColor ?? "#ffffff"}
@@ -414,7 +414,7 @@ export default function InspectorPanel({
         </Section>
       ) : null}
 
-      <Section icon={<FiActivity />} title="AI-verktyg">
+      <Section icon={<FiActivity />} title="AI tools">
         <button
           type="button"
           disabled={disabled || !onOpenAiActions}
@@ -425,10 +425,10 @@ export default function InspectorPanel({
           }}
         >
           <FiZap />
-          Öppna AI Actions
+          Open AI Actions
         </button>
         <p style={styles.helperText}>
-          Generera B-roll, förbättra kvalitet, ta bort bakgrund eller ändra visuell stil.
+          Generate B-roll, enhance quality, remove background, or change visual style.
         </p>
       </Section>
     </aside>

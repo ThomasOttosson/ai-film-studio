@@ -2277,8 +2277,8 @@ function Dashboard() {
               onMusicChange={setMusicUrl}
             />
 
-            <section className="card card-dark p-4 mt-5">
-              <h2 className="h4 fw-bold mb-3">
+            <section className="card card-dark p-3 mt-3">
+              <h2 className="h4 fw-bold mb-2">
                 Export Movie
               </h2>
 

@@ -69,7 +69,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   const isJson = contentType.includes("application/json");
 
   if (!response.ok) {
-    let message = `AI-jobbet kunde inte startas (${response.status}).`;
+    let message = `The AI job could not be started (${response.status}).`;
 
     try {
       if (isJson) {
@@ -91,14 +91,14 @@ async function parseResponse<T>(response: Response): Promise<T> {
         }
       }
     } catch {
-      // Behåll det generella felmeddelandet om svaret inte kan läsas.
+      // Keep the generic error message if the response cannot be read.
     }
 
     throw new Error(message);
   }
 
   if (!isJson) {
-    throw new Error("Backend returnerade ett oväntat svar.");
+    throw new Error("The backend returned an unexpected response.");
   }
 
   return (await response.json()) as T;
@@ -109,11 +109,11 @@ export async function queueAIAction(
   signal?: AbortSignal,
 ): Promise<AIActionJob> {
   if (!request.clip?.id) {
-    throw new Error("Ett markerat klipp krävs för att starta AI-jobbet.");
+    throw new Error("A selected clip is required to start the AI job.");
   }
 
   if (!request.action) {
-    throw new Error("Ingen AI-åtgärd har valts.");
+    throw new Error("No AI action has been selected.");
   }
 
   const token = getAuthToken();
@@ -147,7 +147,7 @@ export async function getAIActionJob(
   signal?: AbortSignal,
 ): Promise<AIActionJob> {
   if (!jobId) {
-    throw new Error("Jobb-id saknas.");
+    throw new Error("Job id is missing.");
   }
 
   const token = getAuthToken();
@@ -181,7 +181,7 @@ export async function waitForAIActionJob(
 
   while (Date.now() - startedAt < timeoutMs) {
     if (options.signal?.aborted) {
-      throw new DOMException("AI-jobbet avbröts.", "AbortError");
+      throw new DOMException("The AI job was cancelled.", "AbortError");
     }
 
     const job = await getAIActionJob(jobId, options.signal);
@@ -192,7 +192,7 @@ export async function waitForAIActionJob(
     }
 
     if (job.status === "failed") {
-      throw new Error(job.error || "AI-jobbet misslyckades.");
+      throw new Error(job.error || "The AI job failed.");
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -200,14 +200,14 @@ export async function waitForAIActionJob(
 
       const abort = () => {
         window.clearTimeout(timeout);
-        reject(new DOMException("AI-jobbet avbröts.", "AbortError"));
+        reject(new DOMException("The AI job was cancelled.", "AbortError"));
       };
 
       options.signal?.addEventListener("abort", abort, { once: true });
     });
   }
 
-  throw new Error("AI-jobbet tog för lång tid och avbröts.");
+  throw new Error("The AI job took too long and was cancelled.");
 }
 
 export function dispatchAIAction(request: QueueAIActionEventDetail): void {
@@ -227,7 +227,7 @@ export function registerAIActionQueueListener(): () => void {
 
     if (!detail?.clip?.id || !detail.action) {
       detail?.onError?.(
-        new Error("AI-eventet saknar klipp eller vald åtgärd."),
+        new Error("The AI event is missing a clip or selected action."),
       );
       return;
     }
@@ -258,7 +258,7 @@ export function registerAIActionQueueListener(): () => void {
       const normalizedError =
         error instanceof Error
           ? error
-          : new Error("Ett okänt fel inträffade.");
+          : new Error("An unknown error occurred.");
 
       detail.onError?.(normalizedError);
 

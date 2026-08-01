@@ -92,8 +92,8 @@ function Timeline({
   }
 
   return (
-    <section className="card card-dark p-0 mb-5 overflow-hidden">
-      <header className="d-flex flex-wrap justify-content-between align-items-center gap-3 border-bottom border-secondary p-4">
+    <section className="card card-dark p-0 mb-3 overflow-hidden">
+      <header className="d-flex flex-wrap justify-content-between align-items-center gap-3 border-bottom border-secondary p-3">
         <div>
           <h2 className="h4 fw-bold mb-1">Movie Timeline</h2>
           <p className="muted-text small mb-0">

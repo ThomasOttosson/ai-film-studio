@@ -20,21 +20,21 @@ export interface AIJobQueuePanelProps {
 }
 
 const ACTION_LABELS: Record<string, string> = {
-  "extend-scene": "Förläng scen",
+  "extend-scene": "Extend scene",
   "cinematic-motion": "Cinematic motion",
-  "remove-background": "Ta bort bakgrund",
-  "change-style": "Ändra stil",
-  "enhance-quality": "Förbättra kvalitet",
-  "generate-voiceover": "Generera voice-over",
-  "clean-audio": "Rensa ljud",
-  "rewrite-narration": "Skriv om narration",
+  "remove-background": "Remove background",
+  "change-style": "Change style",
+  "enhance-quality": "Enhance quality",
+  "generate-voiceover": "Generate voice-over",
+  "clean-audio": "Clean audio",
+  "rewrite-narration": "Rewrite narration",
 };
 
 const STATUS_LABELS: Record<AIActionJob["status"], string> = {
-  queued: "I kö",
-  processing: "Bearbetas",
-  completed: "Klar",
-  failed: "Misslyckades",
+  queued: "Queued",
+  processing: "Processing",
+  completed: "Done",
+  failed: "Failed",
 };
 
 function normalizeProgress(job: AIActionJob): number {
@@ -254,7 +254,7 @@ export default function AIJobQueuePanel({
     <section
       className={`ai-job-queue-panel ${className}`.trim()}
       style={rootStyle}
-      aria-label="AI-jobbkö"
+      aria-label="AI job queue"
     >
       <header
         style={{
@@ -349,7 +349,7 @@ export default function AIJobQueuePanel({
               <button
                 type="button"
                 onClick={clearError}
-                aria-label="Stäng felmeddelandet"
+                aria-label="Close the error message"
                 style={{
                   ...buttonStyle,
                   padding: "2px 6px",
@@ -382,7 +382,7 @@ export default function AIJobQueuePanel({
                   fontSize: 13,
                 }}
               >
-                Inga AI-jobb har startats ännu.
+                No AI jobs have been started yet.
               </div>
             ) : (
               jobs.map((job) => {
@@ -537,7 +537,7 @@ export default function AIJobQueuePanel({
                           }}
                         >
                           <dt style={{ color: "#64748b" }}>
-                            Klipp
+                            Clip
                           </dt>
                           <dd
                             style={{
@@ -620,7 +620,7 @@ export default function AIJobQueuePanel({
                                   color: "#bbf7d0",
                                 }}
                               >
-                                Använd resultat
+                                Use result
                               </button>
                             )}
 

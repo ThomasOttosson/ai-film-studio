@@ -1351,14 +1351,6 @@ function AppMenuBar({
           </div>
 
           <button type="button">
-            Generate
-          </button>
-
-          <button type="button">
-            View
-          </button>
-
-          <button type="button">
             Tools
           </button>
 

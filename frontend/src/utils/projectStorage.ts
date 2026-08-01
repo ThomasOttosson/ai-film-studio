@@ -22,22 +22,22 @@ export interface StoredProject {
   data: SavedProjectData;
 
   /**
-   * Användarens behörighet i projektet.
+   * The user's permission on the project.
    *
    * owner:
-   * Kan redigera, dela, ändra roller och radera projektet.
+   * Can edit, share, change roles, and delete the project.
    *
    * editor:
-   * Kan läsa och redigera projektet.
+   * Can read and edit the project.
    *
    * viewer:
-   * Kan endast läsa projektet.
+   * Can only read the project.
    */
   role?: ProjectRole;
 
   /**
-   * E-postadressen till projektets ägare.
-   * Används främst när ett projekt har delats med en annan användare.
+   * The email address of the project's owner.
+   * Used mainly when a project has been shared with another user.
    */
   ownerEmail?: string;
 }

@@ -165,7 +165,7 @@ export function useAIActionQueue(): AIActionQueueContextValue {
 
   if (!context) {
     throw new Error(
-      "useAIActionQueue måste användas inuti AIActionQueueProvider.",
+      "useAIActionQueue must be used inside AIActionQueueProvider.",
     );
   }
 

@@ -58,62 +58,62 @@ export interface AIActionsPanelProps {
 const actions: AIActionDefinition[] = [
   {
     id: "extend-scene",
-    title: "Förläng scen",
-    description: "Skapa fler bildrutor som fortsätter scenens rörelse och stil.",
+    title: "Extend scene",
+    description: "Create more frames that continue the scene's motion and style.",
     category: "video",
-    promptPlaceholder: "Beskriv hur scenen ska fortsätta...",
+    promptPlaceholder: "Describe how the scene should continue...",
     requiresPrompt: true,
   },
   {
     id: "cinematic-motion",
     title: "Cinematic motion",
-    description: "Lägg till mjuk kamerarörelse och mer filmisk dynamik.",
+    description: "Add smooth camera motion and more cinematic dynamics.",
     category: "video",
-    promptPlaceholder: "Exempel: långsam dolly-in mot huvudpersonen",
+    promptPlaceholder: "Example: slow dolly-in toward the main character",
   },
   {
     id: "remove-background",
-    title: "Ta bort bakgrund",
-    description: "Separera motivet från bakgrunden för compositing.",
+    title: "Remove background",
+    description: "Separate the subject from the background for compositing.",
     category: "image",
-    promptPlaceholder: "Valfri instruktion för kanter och transparens",
+    promptPlaceholder: "Optional instruction for edges and transparency",
   },
   {
     id: "restyle-shot",
-    title: "Ändra visuell stil",
-    description: "Återskapa klippet i en ny konstnärlig eller filmisk stil.",
+    title: "Change visual style",
+    description: "Recreate the clip in a new artistic or cinematic style.",
     category: "image",
-    promptPlaceholder: "Exempel: mörk nordisk noir med mjukt motljus",
+    promptPlaceholder: "Example: dark Nordic noir with soft backlight",
     requiresPrompt: true,
   },
   {
     id: "enhance-quality",
-    title: "Förbättra kvalitet",
-    description: "Minska brus, skärp detaljer och förbättra ljus och färg.",
+    title: "Enhance quality",
+    description: "Reduce noise, sharpen details, and improve light and color.",
     category: "enhance",
-    promptPlaceholder: "Valfria önskemål om färg, skärpa eller brus",
+    promptPlaceholder: "Optional preferences for color, sharpness, or noise",
   },
   {
     id: "generate-voiceover",
-    title: "Generera voice-over",
-    description: "Skapa berättarröst från scenens narration eller egen text.",
+    title: "Generate voice-over",
+    description: "Create narration from the scene's narration or your own text.",
     category: "audio",
-    promptPlaceholder: "Skriv eller justera texten som ska läsas upp...",
+    promptPlaceholder: "Write or adjust the text to be read aloud...",
     requiresPrompt: true,
   },
   {
     id: "clean-audio",
-    title: "Rensa ljud",
-    description: "Ta bort brus, eko och ojämn volym från scenens ljud.",
+    title: "Clean audio",
+    description: "Remove noise, echo, and uneven volume from the scene's audio.",
     category: "audio",
-    promptPlaceholder: "Valfria instruktioner för ljudbearbetningen",
+    promptPlaceholder: "Optional instructions for the audio processing",
   },
   {
     id: "rewrite-narration",
-    title: "Skriv om narration",
-    description: "Förbättra scenens text utan att ändra dess huvudbetydelse.",
+    title: "Rewrite narration",
+    description: "Improve the scene's text without changing its main meaning.",
     category: "text",
-    promptPlaceholder: "Exempel: kortare, mer dramatisk och filmisk",
+    promptPlaceholder: "Example: shorter, more dramatic and cinematic",
     requiresPrompt: true,
   },
 ];
@@ -218,7 +218,7 @@ export default function AIActionsPanel({
     if (!scene || isRunning) return;
 
     if (selectedAction.requiresPrompt && !prompt.trim()) {
-      setError("Lägg till en instruktion innan du kör AI-åtgärden.");
+      setError("Add an instruction before running the AI action.");
       return;
     }
 
@@ -250,7 +250,7 @@ export default function AIActionsPanel({
       setError(
         runError instanceof Error
           ? runError.message
-          : "AI-åtgärden kunde inte startas.",
+          : "The AI action could not be started.",
       );
     } finally {
       setIsRunning(false);
@@ -272,13 +272,13 @@ export default function AIActionsPanel({
         <header style={styles.header}>
           <div>
             <span style={styles.eyebrow}>AI Actions</span>
-            <h2 style={styles.title}>{scene?.title || "Markerad scen"}</h2>
+            <h2 style={styles.title}>{scene?.title || "Selected scene"}</h2>
           </div>
           <button
             type="button"
             style={styles.iconButton}
             onClick={closePanel}
-            aria-label="Stäng AI Actions"
+            aria-label="Close AI Actions"
             disabled={isRunning}
           >
             <FiX />
@@ -288,8 +288,8 @@ export default function AIActionsPanel({
         {!scene ? (
           <div style={styles.emptyState}>
             <FiSliders size={26} />
-            <strong>Ingen scen är markerad</strong>
-            <span>Markera ett klipp och öppna AI Actions igen.</span>
+            <strong>No scene is selected</strong>
+            <span>Select a clip and open AI Actions again.</span>
           </div>
         ) : (
           <div style={styles.body}>
@@ -325,13 +325,13 @@ export default function AIActionsPanel({
                   {categoryIcon(selectedAction.category)}
                 </span>
                 <div>
-                  <span style={styles.eyebrow}>Vald åtgärd</span>
+                  <span style={styles.eyebrow}>Selected action</span>
                   <h3 style={styles.settingsTitle}>{selectedAction.title}</h3>
                 </div>
               </div>
 
               <label style={styles.field}>
-                <span style={styles.label}>Instruktion</span>
+                <span style={styles.label}>Instruction</span>
                 <textarea
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
@@ -344,7 +344,7 @@ export default function AIActionsPanel({
 
               <label style={styles.field}>
                 <span style={styles.rangeHeader}>
-                  <span style={styles.label}>AI-styrka</span>
+                  <span style={styles.label}>AI strength</span>
                   <strong>{strength}%</strong>
                 </span>
                 <input
@@ -369,8 +369,8 @@ export default function AIActionsPanel({
                     disabled={isRunning}
                   />
                   <span>
-                    <strong>Behåll originalljud</strong>
-                    <small>Ljudspåret lämnas oförändrat när videon bearbetas.</small>
+                    <strong>Keep original audio</strong>
+                    <small>The audio track is left unchanged when the video is processed.</small>
                   </span>
                 </label>
               )}
@@ -378,7 +378,7 @@ export default function AIActionsPanel({
               {error ? <div style={styles.error}>{error}</div> : null}
               {completed ? (
                 <div style={styles.success}>
-                  <FiCheck /> Åtgärden har skickats till AI-kön.
+                  <FiCheck /> The action has been sent to the AI queue.
                 </div>
               ) : null}
 
@@ -393,15 +393,15 @@ export default function AIActionsPanel({
               >
                 {isRunning ? (
                   <>
-                    <FiLoader style={styles.spinner} /> Bearbetar...
+                    <FiLoader style={styles.spinner} /> Processing...
                   </>
                 ) : completed ? (
                   <>
-                    <FiRefreshCw /> Kör igen
+                    <FiRefreshCw /> Run again
                   </>
                 ) : (
                   <>
-                    <FiZap /> Kör AI-åtgärd
+                    <FiZap /> Run AI action
                   </>
                 )}
               </button>

@@ -540,7 +540,7 @@ export default function VideoEditor({
       const secondPart: Scene = {
         ...scene,
         id: secondId,
-        title: `${scene.title || "Scene"} – del 2`,
+        title: `${scene.title || "Scene"} – part 2`,
         duration: formatDuration(secondDuration),
       };
 
@@ -655,20 +655,21 @@ export default function VideoEditor({
 
   return (
     <section className="video-editor-shell">
-      <header className="video-editor-toolbar card card-dark p-3 mb-3">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-          <div>
-            <h2 className="h4 fw-bold mb-1">
-              Video Editor
-            </h2>
+      <header className="video-editor-toolbar card card-dark p-3 mb-2">
+        <div>
+          <h2 className="h4 fw-bold mb-1">
+            Video Editor
+          </h2>
 
-            <p className="muted-text small mb-0">
-              Redigera, förhandsgranska och organisera
-              filmens scener.
-            </p>
-          </div>
+          <p className="muted-text small mb-0">
+            Edit, preview, and organize the film's scenes.
+          </p>
+        </div>
+      </header>
 
-          <div className="d-flex flex-wrap align-items-center gap-2">
+      <div className="row g-2 align-items-stretch mb-2">
+        <div className="col-12 col-xl-8">
+          <div className="video-editor-actions d-flex flex-wrap align-items-center gap-2 mb-2">
             <button
               type="button"
               className="btn btn-outline-light btn-sm"
@@ -678,7 +679,7 @@ export default function VideoEditor({
               disabled={scenes.length === 0}
             >
               {isPlaying ? <FiPause /> : <FiPlay />}{" "}
-              {isPlaying ? "Pausa" : "Spela"}
+              {isPlaying ? "Pause" : "Play"}
             </button>
 
             <button
@@ -686,9 +687,9 @@ export default function VideoEditor({
               className="btn btn-outline-light btn-sm"
               onClick={splitAtPlayhead}
               disabled={!activeScene}
-              title="Dela vid playhead (S)"
+              title="Split at playhead (S)"
             >
-              <FiScissors /> Dela
+              <FiScissors /> Split
             </button>
 
             <button
@@ -696,9 +697,9 @@ export default function VideoEditor({
               className="btn btn-outline-light btn-sm"
               onClick={duplicateSelectedScene}
               disabled={!selectedScene}
-              title="Duplicera (Ctrl/Cmd + D)"
+              title="Duplicate (Ctrl/Cmd + D)"
             >
-              <FiCopy /> Duplicera
+              <FiCopy /> Duplicate
             </button>
 
             <button
@@ -709,9 +710,9 @@ export default function VideoEditor({
                 removeScene(selectedSceneId)
               }
               disabled={!selectedSceneId}
-              title="Ta bort (Delete)"
+              title="Remove (Delete)"
             >
-              <FiTrash2 /> Ta bort
+              <FiTrash2 /> Remove
             </button>
 
             <button
@@ -719,14 +720,10 @@ export default function VideoEditor({
               className="btn btn-primary btn-sm"
               onClick={addEmptyScene}
             >
-              <FiPlus /> Ny scen
+              <FiPlus /> New scene
             </button>
           </div>
-        </div>
-      </header>
 
-      <div className="row g-3 align-items-stretch mb-3">
-        <div className="col-12 col-xl-8">
           <PreviewPlayer
             scene={activeScene}
             currentTime={currentTime}
@@ -781,16 +778,16 @@ export default function VideoEditor({
       )}
 
       {scenes.length > 0 ? (
-        <div className="card card-dark px-3 py-2 mt-3">
+        <div className="card card-dark px-3 py-2 mt-2">
           <div className="d-flex flex-wrap justify-content-between gap-2 small muted-text">
             <span>
-              Markerad:{" "}
-              {selectedScene?.title || "Ingen scen"}
+              Selected:{" "}
+              {selectedScene?.title || "No scene"}
             </span>
 
             <span>
-              Kortkommandon: Space spela/pausa · S dela ·
-              Delete ta bort · Ctrl/Cmd+D duplicera
+              Shortcuts: Space play/pause · S split ·
+              Delete remove · Ctrl/Cmd+D duplicate
             </span>
           </div>
         </div>
