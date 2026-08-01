@@ -211,7 +211,8 @@ function PreviewPlayer({
         .preview-player-stage {
           position: relative;
           display: grid;
-          min-height: 280px;
+          min-height: 180px;
+          max-height: 300px;
           flex: 1;
           place-items: center;
           overflow: hidden;
@@ -236,7 +237,7 @@ function PreviewPlayer({
           z-index: 1;
           width: 100%;
           height: 100%;
-          max-height: 68vh;
+          max-height: 300px;
           object-fit: contain;
           background: #000;
         }
@@ -283,8 +284,8 @@ function PreviewPlayer({
           position: relative;
           z-index: 3;
           display: grid;
-          gap: 10px;
-          padding: 12px 14px 14px;
+          gap: 7px;
+          padding: 8px 12px 9px;
           border-top: 1px solid rgba(148, 163, 184, .14);
           background: rgba(10, 15, 25, .96);
         }
@@ -365,7 +366,7 @@ function PreviewPlayer({
         }
 
         @media (max-width: 680px) {
-          .preview-player-stage { min-height: 220px; }
+          .preview-player-stage { min-height: 160px; max-height: 240px; }
           .preview-player-control-row { grid-template-columns: auto 1fr auto; }
           .preview-player-volume { display: none; }
           .preview-player-time { font-size: .72rem; }

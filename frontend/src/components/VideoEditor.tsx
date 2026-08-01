@@ -655,9 +655,9 @@ export default function VideoEditor({
 
   return (
     <section className="video-editor-shell">
-      <header className="video-editor-toolbar card card-dark p-3 mb-2">
+      <header className="video-editor-toolbar card card-dark p-2 mb-2">
         <div>
-          <h2 className="h4 fw-bold mb-1">
+          <h2 className="h5 fw-bold mb-0">
             Video Editor
           </h2>
 

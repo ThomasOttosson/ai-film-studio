@@ -96,8 +96,8 @@ function Timeline({
   }
 
   return (
-    <section className="card card-dark p-0 mb-3 overflow-hidden">
-      <header className="d-flex flex-wrap justify-content-between align-items-center gap-3 border-bottom border-secondary p-3">
+    <section className="card card-dark p-0 mb-2 overflow-hidden">
+      <header className="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom border-secondary p-2">
         <div>
           <h2 className="h4 fw-bold mb-1">Movie Timeline</h2>
           <p className="muted-text small mb-0">
@@ -151,7 +151,7 @@ function Timeline({
       </header>
 
       {toolbar ? (
-        <div className="border-bottom border-secondary p-3">
+        <div className="border-bottom border-secondary p-2">
           <div className="d-flex flex-wrap align-items-center gap-2">
             {toolbar}
           </div>
@@ -166,14 +166,14 @@ function Timeline({
           </p>
         </div>
       ) : (
-        <div className="d-flex" style={{ minHeight: 260 }}>
+        <div className="d-flex" style={{ minHeight: 150 }}>
           <aside
             className="border-end border-secondary flex-shrink-0"
             style={{ width: 190, background: "rgba(0, 0, 0, 0.18)" }}
           >
             <div
               className="border-bottom border-secondary px-3 d-flex align-items-center"
-              style={{ height: 42 }}
+              style={{ height: 32 }}
             >
               <span className="text-uppercase muted-text fw-semibold" style={{ fontSize: 11 }}>
                 Scene track
@@ -201,7 +201,7 @@ function Timeline({
             <div style={{ width: timelineWidth, minWidth: "100%" }}>
               <div
                 className="position-relative border-bottom border-secondary"
-                style={{ height: 42, cursor: "pointer" }}
+                style={{ height: 32, cursor: "pointer" }}
                 onClick={handleTimelineClick}
                 role="presentation"
               >
@@ -227,8 +227,8 @@ function Timeline({
               </div>
 
               <div
-                className="position-relative p-3"
-                style={{ height: 170, cursor: "pointer" }}
+                className="position-relative p-2"
+                style={{ height: 108, cursor: "pointer" }}
                 onClick={handleTimelineClick}
                 role="presentation"
               >
@@ -258,8 +258,8 @@ function Timeline({
                 <div
                   className="position-relative rounded border border-secondary"
                   style={{
-                    height: 104,
-                    marginTop: 16,
+                    height: 68,
+                    marginTop: 8,
                     background: "rgba(255, 255, 255, 0.025)",
                   }}
                 >
@@ -275,9 +275,9 @@ function Timeline({
                         }`}
                         style={{
                           left: start * zoom + 2,
-                          top: 8,
+                          top: 6,
                           width: clipWidth,
-                          height: 86,
+                          height: 52,
                           background: selected
                             ? "linear-gradient(135deg, rgba(13, 202, 240, 0.35), rgba(13, 110, 253, 0.22))"
                             : "linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(37, 99, 235, 0.18))",
@@ -316,7 +316,7 @@ function Timeline({
       )}
 
       {scenes.length > 0 && (
-        <footer className="border-top border-secondary p-3">
+        <footer className="border-top border-secondary p-2">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
             {sceneData.map(({ scene, index }) =>
               selectedSceneId === scene.id ? (
