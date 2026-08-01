@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { Scene } from "../types/film";
 
 interface TimelineProps {
@@ -6,6 +6,8 @@ interface TimelineProps {
   onMoveSceneUp: (sceneId: number) => void;
   onMoveSceneDown: (sceneId: number) => void;
   onRemoveScene: (sceneId: number) => void;
+  toolbar?: ReactNode;
+  shortcutsHint?: ReactNode;
 }
 
 const MIN_ZOOM = 36;
@@ -42,6 +44,8 @@ function Timeline({
   onMoveSceneUp,
   onMoveSceneDown,
   onRemoveScene,
+  toolbar,
+  shortcutsHint,
 }: TimelineProps) {
   const [zoom, setZoom] = useState(64);
   const [selectedSceneId, setSelectedSceneId] = useState<number | null>(
@@ -145,6 +149,14 @@ function Timeline({
           </div>
         </div>
       </header>
+
+      {toolbar ? (
+        <div className="border-bottom border-secondary p-3">
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            {toolbar}
+          </div>
+        </div>
+      ) : null}
 
       {scenes.length === 0 ? (
         <div className="text-center p-5">
@@ -306,10 +318,6 @@ function Timeline({
       {scenes.length > 0 && (
         <footer className="border-top border-secondary p-3">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <p className="muted-text small mb-0">
-              Select a scene, then use the controls to change its position or remove it.
-            </p>
-
             {sceneData.map(({ scene, index }) =>
               selectedSceneId === scene.id ? (
                 <div key={scene.id} className="d-flex flex-wrap align-items-center gap-2">
@@ -349,6 +357,10 @@ function Timeline({
                 </div>
               ) : null,
             )}
+
+            {shortcutsHint ? (
+              <div className="ms-auto">{shortcutsHint}</div>
+            ) : null}
           </div>
         </footer>
       )}

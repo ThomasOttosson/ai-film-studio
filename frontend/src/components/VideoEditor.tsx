@@ -669,7 +669,50 @@ export default function VideoEditor({
 
       <div className="row g-2 align-items-stretch mb-2">
         <div className="col-12 col-xl-8">
-          <div className="video-editor-actions d-flex flex-wrap align-items-center gap-2 mb-2">
+          <PreviewPlayer
+            scene={activeScene}
+            currentTime={currentTime}
+            duration={totalDuration}
+            isPlaying={isPlaying}
+            onPlayingChange={setIsPlaying}
+            onTimeChange={(time) =>
+              setCurrentTime(
+                clamp(time, 0, totalDuration),
+              )
+            }
+          />
+        </div>
+
+        <div className="col-12 col-xl-4">
+          <div className="d-flex flex-column gap-3">
+            <InspectorPanel
+              clip={inspectorClip}
+              onChange={updateInspectorClip}
+              onOpenAiActions={
+                AI_ACTIONS_ENABLED ? openAiActions : undefined
+              }
+            />
+
+            {AI_ACTIONS_ENABLED && (
+              <AIJobQueuePanel
+                onApplyResult={applyAIResult}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Timeline
+        scenes={scenes}
+        onMoveSceneUp={(sceneId) =>
+          moveScene(sceneId, -1)
+        }
+        onMoveSceneDown={(sceneId) =>
+          moveScene(sceneId, 1)
+        }
+        onRemoveScene={removeScene}
+        toolbar={
+          <>
             <button
               type="button"
               className="btn btn-outline-light btn-sm"
@@ -722,50 +765,14 @@ export default function VideoEditor({
             >
               <FiPlus /> New scene
             </button>
-          </div>
-
-          <PreviewPlayer
-            scene={activeScene}
-            currentTime={currentTime}
-            duration={totalDuration}
-            isPlaying={isPlaying}
-            onPlayingChange={setIsPlaying}
-            onTimeChange={(time) =>
-              setCurrentTime(
-                clamp(time, 0, totalDuration),
-              )
-            }
-          />
-        </div>
-
-        <div className="col-12 col-xl-4">
-          <div className="d-flex flex-column gap-3">
-            <InspectorPanel
-              clip={inspectorClip}
-              onChange={updateInspectorClip}
-              onOpenAiActions={
-                AI_ACTIONS_ENABLED ? openAiActions : undefined
-              }
-            />
-
-            {AI_ACTIONS_ENABLED && (
-              <AIJobQueuePanel
-                onApplyResult={applyAIResult}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
-      <Timeline
-        scenes={scenes}
-        onMoveSceneUp={(sceneId) =>
-          moveScene(sceneId, -1)
+          </>
         }
-        onMoveSceneDown={(sceneId) =>
-          moveScene(sceneId, 1)
+        shortcutsHint={
+          <span className="small muted-text">
+            Shortcuts: Space play/pause · S split ·
+            Delete remove · Ctrl/Cmd+D duplicate
+          </span>
         }
-        onRemoveScene={removeScene}
       />
 
       {AI_ACTIONS_ENABLED && (
@@ -776,22 +783,6 @@ export default function VideoEditor({
           onRunAction={runAIAction}
         />
       )}
-
-      {scenes.length > 0 ? (
-        <div className="card card-dark px-3 py-2 mt-2">
-          <div className="d-flex flex-wrap justify-content-between gap-2 small muted-text">
-            <span>
-              Selected:{" "}
-              {selectedScene?.title || "No scene"}
-            </span>
-
-            <span>
-              Shortcuts: Space play/pause · S split ·
-              Delete remove · Ctrl/Cmd+D duplicate
-            </span>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }
