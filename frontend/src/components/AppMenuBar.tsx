@@ -1349,18 +1349,6 @@ function AppMenuBar({
               </div>
             )}
           </div>
-
-          <button type="button">
-            Tools
-          </button>
-
-          <button type="button">
-            Window
-          </button>
-
-          <button type="button">
-            Help
-          </button>
         </div>
 
         <div className="app-menu-right">
