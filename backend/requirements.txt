@@ -25,6 +25,8 @@ MarkupSafe==3.0.3
 moviepy==2.2.1
 numpy==2.5.1
 openai==2.44.0
+# Pinned <12 because moviepy==2.2.1 (latest release) hard-requires pillow<12.0;
+# pip install -r requirements.txt fails with ResolutionImpossible otherwise.
 pillow==11.3.0
 proglog==0.1.12
 pydantic==2.13.4
